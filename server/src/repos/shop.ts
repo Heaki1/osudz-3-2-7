@@ -5,8 +5,31 @@
 
 import { pool } from '../db.js';
 import crypto from 'node:crypto';
+import {
+  SHOP_SEASON_SIZE,
+  calculateStealPricing,
+  nextShopStealPrice,
+  seasonForRoundNumber,
+  shopStealCompensation,
+} from '../domain/shop/pricing.js';
+import {
+  assertAdminPriceRules,
+  assertLifecycleTransition,
+  assertNotAlreadyOwned,
+  assertPurchasableItem,
+  assertShopItemActive,
+  assertStealableItem,
+  assertSufficientBalance,
+  validateDraftInput,
+  validateShopItemUpdateInput,
+} from '../domain/shop/rules.js';
 
-const SEASON_SIZE = 3;
+export {
+  SHOP_SEASON_SIZE,
+  nextShopStealPrice,
+  shopStealCompensation,
+  seasonForRoundNumber,
+} from '../domain/shop/pricing.js';
 
 export interface ShopSeasonRow {
   season: number;
@@ -75,16 +98,6 @@ export interface ShopStealCommit {
   compensationLedgerCreatedAt: string | null;
 }
 
-export function nextShopStealPrice(currentPriceDzp: number): number {
-  return Math.ceil(currentPriceDzp * 1.5);
-}
-
-export function shopStealCompensation(
-  previousOwnerAcquisitionPriceDzp: number,
-): number {
-  return Math.floor(previousOwnerAcquisitionPriceDzp * 0.5);
-}
-
 export async function stealShopItem(
   userId: number,
   itemId: string,
@@ -128,26 +141,8 @@ export async function stealShopItem(
       throw error;
     }
 
-    if (item.lifecycle !== 'active') {
-      await client.query('ROLLBACK');
-      const error = new Error('Item is not available');
-      error.name = 'ITEM_UNAVAILABLE';
-      throw error;
-    }
-
-    if (item.ownership_type !== 'stealable') {
-      await client.query('ROLLBACK');
-      const error = new Error('This item is not stealable');
-      error.name = 'NOT_STEALABLE';
-      throw error;
-    }
-
-    if (item.current_price_dzp === null || item.current_price_dzp <= 0) {
-      await client.query('ROLLBACK');
-      const error = new Error('This item has no valid steal price');
-      error.name = 'ITEM_UNAVAILABLE';
-      throw error;
-    }
+    assertShopItemActive(item.lifecycle);
+    assertStealableItem(item.ownership_type, item.current_price_dzp);
 
     // Lock the current ownership row, if one exists. Because the item row is
     // already locked, another steal cannot change ownership between these reads.
@@ -174,12 +169,7 @@ export async function stealShopItem(
 
     const previousOwner = ownerRows[0] ?? null;
 
-    if (previousOwner?.user_id === userId) {
-      await client.query('ROLLBACK');
-      const error = new Error('You already own this title');
-      error.name = 'ALREADY_OWNED';
-      throw error;
-    }
+    assertNotAlreadyOwned(previousOwner?.user_id === userId, 'You already own this title');
 
     const { rows: seasonRows } = await client.query<{
       round_number: number | null;
@@ -202,18 +192,13 @@ export async function stealShopItem(
     );
 
     const roundNumber = seasonRows[0]?.round_number ?? null;
-    const season =
-      roundNumber === null ? 1 : Math.max(1, Math.ceil(roundNumber / SEASON_SIZE));
+    const season = seasonForRoundNumber(roundNumber);
 
     const price = item.current_price_dzp;
-    const compensation =
-      previousOwner === null
-        ? 0
-        : shopStealCompensation(previousOwner.acquisition_price_dzp);
-
-    // Price only moves upward. The next price is based on the price actually
-    // paid by this transaction, not on initial_price_dzp.
-    const newPrice = nextShopStealPrice(price);
+    const { compensationDzp: compensation, newPriceDzp: newPrice } = calculateStealPricing(
+      price,
+      previousOwner?.acquisition_price_dzp ?? null,
+    );
 
     const { rows: balanceRows } = await client.query<{
       balance_dzp: number;
@@ -229,12 +214,7 @@ export async function stealShopItem(
 
     const balance = balanceRows[0]?.balance_dzp ?? 0;
 
-    if (balance < price) {
-      await client.query('ROLLBACK');
-      const error = new Error('Insufficient DZP');
-      error.name = 'INSUFFICIENT_FUNDS';
-      throw error;
-    }
+    assertSufficientBalance(balance, price);
 
     const timestamp = new Date();
 
@@ -653,24 +633,7 @@ export interface AdminShopItemDraftCreate {
 export async function createShopItemDraft(
   input: AdminShopItemDraftCreate,
 ): Promise<{ id: string }> {
-  const name = input.name.trim();
-  const description = input.description.trim();
-
-  if (name.length === 0 || name.length > 120) {
-    throw new Error('Item name must be between 1 and 120 characters');
-  }
-
-  if (description.length === 0 || description.length > 2000) {
-    throw new Error('Item description must be between 1 and 2000 characters');
-  }
-
-  if (!Number.isInteger(input.displayOrder) || input.displayOrder < 0) {
-    throw new Error('Display order must be a non-negative integer');
-  }
-
-  if (!Number.isInteger(input.initialPriceDzp) || input.initialPriceDzp <= 0) {
-    throw new Error('Initial price must be a positive integer');
-  }
+  const { name, description } = validateDraftInput(input);
 
   const profileSlot = input.category === 'profile_decoration'
     ? null
@@ -908,14 +871,7 @@ export async function updateShopItemLifecycleAdmin(
     }
 
     const current = itemResult.rows[0].lifecycle;
-    const permitted =
-      (current === 'draft' && (target === 'ready' || target === 'retired')) ||
-      (current === 'ready' && (target === 'active' || target === 'retired')) ||
-      (current === 'active' && target === 'retired');
-
-    if (!permitted) {
-      throw new Error(`Cannot change Shop item lifecycle from ${current} to ${target}`);
-    }
+    assertLifecycleTransition(current, target);
 
     if (target === 'active') {
       const artworkResult = await client.query<{ id: string }>(
@@ -966,35 +922,7 @@ export async function updateShopItemAdmin(
   itemId: string,
   input: AdminShopItemUpdate,
 ): Promise<void> {
-  const name = input.name.trim();
-  const description = input.description.trim();
-
-  if (name.length === 0) {
-    throw new Error('Item name is required');
-  }
-
-  if (name.length > 120) {
-    throw new Error('Item name must be 120 characters or fewer');
-  }
-
-  if (description.length > 2000) {
-    throw new Error('Item description must be 2000 characters or fewer');
-  }
-
-  if (!Number.isInteger(input.displayOrder) || input.displayOrder < 0) {
-    throw new Error('Display order must be a non-negative integer');
-  }
-
-  if (!Number.isInteger(input.initialPriceDzp) || input.initialPriceDzp <= 0) {
-    throw new Error('Initial price must be a positive integer');
-  }
-
-  if (
-    input.currentPriceDzp !== null &&
-    (!Number.isInteger(input.currentPriceDzp) || input.currentPriceDzp <= 0)
-  ) {
-    throw new Error('Current price must be a positive integer or null');
-  }
+  const { name, description } = validateShopItemUpdateInput(input);
 
   const client = await pool.connect();
 
@@ -1021,23 +949,8 @@ export async function updateShopItemAdmin(
 
     const item = itemResult.rows[0];
 
-    if (item.ownership_type === 'normal') {
-      if (input.currentPriceDzp !== null) {
-        throw new Error('Normal items cannot have a current steal price');
-      }
-    } else {
-      if (input.currentPriceDzp === null) {
-        throw new Error('Stealable items require a current price');
-      }
-
-      if (input.currentPriceDzp < item.current_price_dzp!) {
-        throw new Error('Stealable item price cannot decrease');
-      }
-
-      if (input.currentPriceDzp < input.initialPriceDzp) {
-        throw new Error('Current price cannot be below the initial price');
-      }
-
+    let hasTransferHistory = false;
+    if (item.ownership_type === 'stealable') {
       const historyResult = await client.query<{ count: string }>(
         `
           SELECT COUNT(*)::text AS count
@@ -1046,18 +959,17 @@ export async function updateShopItemAdmin(
         `,
         [itemId],
       );
-
-      const hasTransferHistory = Number(historyResult.rows[0].count) > 0;
-
-      if (
-        hasTransferHistory &&
-        input.initialPriceDzp !== item.initial_price_dzp
-      ) {
-        throw new Error(
-          'Initial price cannot change after a stealable item has transfer history',
-        );
-      }
+      hasTransferHistory = Number(historyResult.rows[0].count) > 0;
     }
+
+    assertAdminPriceRules(
+      item.ownership_type,
+      input.initialPriceDzp,
+      input.currentPriceDzp,
+      item.initial_price_dzp,
+      item.current_price_dzp,
+      hasTransferHistory,
+    );
 
     await client.query(
       `
@@ -1142,8 +1054,8 @@ export async function getCurrentShopSeason(): Promise<ShopSeasonRow> {
     };
   }
 
-  const season = Math.ceil(roundNumber / SEASON_SIZE);
-  const finalRoundNumber = season * SEASON_SIZE;
+const season = Math.ceil(roundNumber / SHOP_SEASON_SIZE);
+const finalRoundNumber = season * SHOP_SEASON_SIZE;
 
   const { rows: endRows } = await pool.query<{ challenge_ends_at: string | null }>(
     `
@@ -1553,19 +1465,9 @@ export async function purchaseShopItem(
       throw error;
     }
 
-    if (item.lifecycle !== 'active') {
-      await client.query('ROLLBACK');
-      const error = new Error('Item is not available');
-      error.name = 'ITEM_UNAVAILABLE';
-      throw error;
-    }
+    assertShopItemActive(item.lifecycle);
 
-    if (item.ownership_type !== 'normal') {
-      await client.query('ROLLBACK');
-      const error = new Error('This item must be acquired through the steal flow');
-      error.name = 'NOT_PURCHASABLE';
-      throw error;
-    }
+    assertPurchasableItem(item.ownership_type);
 
     // Permanent normal ownership.
     const { rows: ownedRows } = await client.query<{ id: number }>(
@@ -1579,12 +1481,7 @@ export async function purchaseShopItem(
       [item.id, userId],
     );
 
-    if (ownedRows.length > 0) {
-      await client.query('ROLLBACK');
-      const error = new Error('You already own this item');
-      error.name = 'ALREADY_OWNED';
-      throw error;
-    }
+    assertNotAlreadyOwned(ownedRows.length > 0, 'You already own this item');
 
     // The current season is derived from the platform's rounds. The client
     // never supplies it.
@@ -1609,8 +1506,7 @@ export async function purchaseShopItem(
     );
 
     const roundNumber = seasonRows[0]?.round_number ?? null;
-    const season =
-      roundNumber === null ? 1 : Math.ceil(roundNumber / SEASON_SIZE);
+    const season = seasonForRoundNumber(roundNumber);
 
     const { rows: balanceRows } = await client.query<{
       balance_dzp: number;
@@ -1627,12 +1523,7 @@ export async function purchaseShopItem(
     const balance = balanceRows[0]?.balance_dzp ?? 0;
     const price = item.initial_price_dzp;
 
-    if (balance < price) {
-      await client.query('ROLLBACK');
-      const error = new Error('Insufficient DZP');
-      error.name = 'INSUFFICIENT_FUNDS';
-      throw error;
-    }
+    assertSufficientBalance(balance, price);
 
     const { rows: ownershipRows } = await client.query<{
       id: number;
