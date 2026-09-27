@@ -1,0 +1,9 @@
+﻿#!/bin/bash
+set -e
+URL="${FIGMA_MAKE_URL:-http://localhost:${PORT:-8443}}"
+for i in $(seq 1 60); do
+  if curl -sf "$URL" >/dev/null 2>&1; then exit 0; fi
+  sleep 2
+done
+echo "Dev server did not become ready: $URL"
+exit 1

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">osu!DZ Shop placeholder</title>
+  <desc id="desc">Temporary artwork placeholder for an osu!DZ Shop item.</desc>
+  <rect width="1600" height="900" fill="#0d1526"/>
+  <rect x="40" y="40" width="1520" height="820" rx="32" fill="#111c33" stroke="#334155" stroke-width="4"/>
+  <text x="800" y="430" text-anchor="middle" fill="#94a3b8" font-family="Arial, sans-serif" font-size="56">
+    osu!DZ SHOP
+  </text>
+  <text x="800" y="500" text-anchor="middle" fill="#64748b" font-family="Arial, sans-serif" font-size="28">
+    Artwork placeholder
+  </text>
+</svg>
