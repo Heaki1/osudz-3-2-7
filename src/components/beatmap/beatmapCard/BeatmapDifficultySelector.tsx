@@ -1,4 +1,4 @@
-import type { Beatmap } from '../../types';
+import type { Beatmap } from '../../../types';
 
 interface BeatmapDifficultySelectorProps {
   difficulties: Beatmap[];

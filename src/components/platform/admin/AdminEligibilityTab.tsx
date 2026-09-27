@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AlertCircle, Plus, ToggleLeft, ToggleRight, X } from 'lucide-react';
-import { api, type ApiAllowedCountry, type ApiParticipantException } from '../../api/client';
-import { formatDeadline } from '../../lib/round';
+import { api, type ApiAllowedCountry, type ApiParticipantException } from '../../../api/client';
+import { formatDeadline } from '../../../lib/round';
 import { Section } from './AdminDashboardPrimitives';
 
 const REGION_NAMES = (() => { try { return new Intl.DisplayNames(['en'], { type: 'region' }); } catch { return null; } })();

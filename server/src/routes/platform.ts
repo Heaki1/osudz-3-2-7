@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getLevelRush, getMappingStats, getPlayerProgress, getPlayerStreak, listActivity, comparePlayers } from '../repo/platform.js';
+import { getLevelRush, getMappingStats, getPlayerProgress, getPlayerStreak, listActivity, comparePlayers } from '../repos/platform.js';
 import { fetchPublicUser, fetchPublicUserBestScores } from '../services/osu.js';
 import { pool } from '../db.js';
 

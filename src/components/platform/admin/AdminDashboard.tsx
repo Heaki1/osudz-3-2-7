@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Phase } from '../../types';
-import { PlayerAvatar } from './PlayerAvatar';
+import { Phase } from '../../../types';
+import { PlayerAvatar } from '../player/PlayerAvatar';
 import {
   api,
   ApiAllowedCountry,
   ApiParticipantException,
-} from '../../api/client';
-import { CurrentRound, formatDeadline, roundLabel, useCountdown } from '../../lib/round';
-import { beatmapUrl } from '../../lib/submission';
-import { AuthUser } from './NavHeader';
+} from '../../../api/client';
+import { CurrentRound, formatDeadline, roundLabel, useCountdown } from '../../../lib/round';
+import { beatmapUrl } from '../../../lib/submission';
+import { AuthUser } from '../NavHeader';
 import { AdminSubmissionsTab as SubmissionsTab } from './AdminSubmissionsTab';
 import { AdminEligibilityTab as EligibilityTab } from './AdminEligibilityTab';
 import { Banner, Section } from './AdminDashboardPrimitives';

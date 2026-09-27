@@ -9,7 +9,7 @@
  * computes one. There is no arithmetic on money in this file, by design.
  */
 
-import type { ShopItem, Viewer } from './shop.types';
+import type { ShopItem, Viewer } from './shop/shop.types';
 
 export type ViewerState =
   /** Viewer holds this item. Wins over every other state, including `retired`. */

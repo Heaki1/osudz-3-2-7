@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Beatmap, Phase, PlatformPage } from '../../types';
-import { ApiChallengeBeatmap, ApiChallengeScore, ApiSubmission } from '../../api/client';
-import { api } from '../../api/client';
-import { CurrentRound, isBallotOpen, roundLabel, useCountdown } from '../../lib/round';
-import { beatmapUrl } from '../../lib/submission';
-import { BeatmapCardPlatform } from './BeatmapCardPlatform';
-import { PlayerAvatar } from './PlayerAvatar';
-import { AuthUser } from './NavHeader';
-import { ChallengeChat } from './ChallengeChat';
+import { Beatmap, Phase, PlatformPage } from '../../../types';
+import { ApiChallengeBeatmap, ApiChallengeScore, ApiSubmission } from '../../../api/client';
+import { api } from '../../../api/client';
+import { CurrentRound, isBallotOpen, roundLabel, useCountdown } from '../../../lib/round';
+import { beatmapUrl } from '../../../lib/submission';
+import { BeatmapCardPlatform } from '../BeatmapCardPlatform';
+import { PlayerAvatar } from '../player/PlayerAvatar';
+import { AuthUser } from '../NavHeader';
+import { ChallengeChat } from '../ChallengeChat';
 import { ChallengeLeaderboard, MyChallengeScore } from './DashboardChallengePanels';
 import { ImportFavoritesButton, SubmissionRequirements, SubmissionStatusBand, YourSubmission } from './DashboardSubmissionPanels';
 import { DashboardChallengeHero } from './DashboardChallengeHero';
@@ -18,14 +18,14 @@ import {
 } from 'lucide-react';
 
 function PersonalProgress({ user, phase }: { user: AuthUser | null; phase: Phase }) {
-  const [data, setData] = useState<import('../../api/client').ApiProgression | null>(null);
-  const [activity, setActivity] = useState<import('../../api/client').ApiActivityEvent[] | null>(null);
+  const [data, setData] = useState<import('../../../api/client').ApiProgression | null>(null);
+  const [activity, setActivity] = useState<import('../../../api/client').ApiActivityEvent[] | null>(null);
   const [recap, setRecap] = useState<{
     roundNumber: number; month: string; year: number;
     winner: { title: string; artist: string; difficultyName: string; coverUrl: string } | null;
     winnerVoteCount: number | null; totalVotes: number | null; archiveAt: string | null;
   } | null>(null);
-  const [levelRush, setLevelRush] = useState<import('../../api/client').ApiLevelRushEntry[] | null>(null);
+  const [levelRush, setLevelRush] = useState<import('../../../api/client').ApiLevelRushEntry[] | null>(null);
 
   useEffect(() => {
     if (!user) return;

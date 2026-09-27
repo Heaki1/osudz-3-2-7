@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { api, ApiAdminUser } from '../../api/client';
-import { PlayerAvatar } from './PlayerAvatar';
+import { api, ApiAdminUser } from '../../../api/client';
+import { PlayerAvatar } from '../player/PlayerAvatar';
 import { AlertCircle, CheckCircle2, Users } from 'lucide-react';
 
 // ── USERS ─────────────────────────────────────────────────────────────────────

@@ -13,14 +13,14 @@
 // close voting, and a future one does not open it.
 
 import { Router } from 'express';
-import { addActivity } from '../repo/platform.js';
+import { addActivity } from '../repos/platform.js';
 import type { Response } from 'express';
 import { parsePositiveInt } from '../lib/validation.js';
 import { requireAuth, requireCanVote } from '../middleware/auth.js';
 import { rateLimit } from '../middleware/rateLimit.js';
-import { findCurrent } from '../repo/rounds.js';
-import { findById } from '../repo/submissions.js';
-import { cast, findByUserAndRound, retract } from '../repo/votes.js';
+import { findCurrent } from '../repos/rounds.js';
+import { findById } from '../repos/submissions.js';
+import { cast, findByUserAndRound, retract } from '../repos/votes.js';
 
 const router = Router();
 

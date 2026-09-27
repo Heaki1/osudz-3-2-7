@@ -9,7 +9,7 @@
 // setting is administrative detail and belongs to GET /api/admin/settings.
 
 import { Router } from 'express';
-import { settings } from '../repo/siteSettings.js';
+import { settings } from '../repos/siteSettings.js';
 
 const router = Router();
 

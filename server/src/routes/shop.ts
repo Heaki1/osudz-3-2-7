@@ -16,7 +16,7 @@ import {
   purchaseShopItem,
   setShopProfileItem,
   stealShopItem,
-} from '../repo/shop.js';
+} from '../repos/shop.js';
 
 const router = Router();
 

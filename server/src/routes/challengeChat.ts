@@ -17,8 +17,8 @@ import {
   post,
   remove,
   toApiChatMessage,
-} from '../repo/challengeChat.js';
-import { findCurrent } from '../repo/rounds.js';
+} from '../repos/challengeChat.js';
+import { findCurrent } from '../repos/rounds.js';
 
 const router = Router();
 

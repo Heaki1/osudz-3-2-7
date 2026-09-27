@@ -11,11 +11,11 @@ import {
   participantCounts,
   toApiRound,
   type RoundRow,
-} from '../repo/rounds.js';
-import { findById as findSubmission, toApiSubmission } from '../repo/submissions.js';
-import { listForRound, toApiChallengeScore } from '../repo/challengeScores.js';
-import { listForRound as listChallengeBeatmaps, toApiChallengeBeatmap } from '../repo/challengeBeatmaps.js';
-import { frozenDzpp } from '../repo/dzpp.js';
+} from '../repos/rounds.js';
+import { findById as findSubmission, toApiSubmission } from '../repos/submissions.js';
+import { listForRound, toApiChallengeScore } from '../repos/challengeScores.js';
+import { listForRound as listChallengeBeatmaps, toApiChallengeBeatmap } from '../repos/challengeBeatmaps.js';
+import { frozenDzpp } from '../repos/dzpp.js';
 
 const router = Router();
 

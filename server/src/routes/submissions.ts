@@ -8,13 +8,13 @@
 
 import { Router } from 'express';
 import { fetchBeatmapGenre } from '../services/osu.js';
-import { addActivity } from '../repo/platform.js';
+import { addActivity } from '../repos/platform.js';
 import type { Response } from 'express';
 import { requireAuth, requireCanSubmit } from '../middleware/auth.js';
 import { parsePositiveInt } from '../lib/validation.js';
 import { rateLimit } from '../middleware/rateLimit.js';
-import { findCurrent } from '../repo/rounds.js';
-import { checkBeatmapRules, settings } from '../repo/siteSettings.js';
+import { findCurrent } from '../repos/rounds.js';
+import { checkBeatmapRules, settings } from '../repos/siteSettings.js';
 import {
   create,
   findApprovedById,
@@ -25,7 +25,7 @@ import {
   removeByUserAndRound,
   removeByIdForUserAndRound,
   toApiSubmission,
-} from '../repo/submissions.js';
+} from '../repos/submissions.js';
 import {
   BeatmapNotFound,
   BeatmapRejected,

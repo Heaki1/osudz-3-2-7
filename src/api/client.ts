@@ -8,7 +8,7 @@ import type {
   ShopProfile,
   ShopSnapshot,
   TransactionResult,
-} from "../components/platform/shop.types";
+} from "../components/platform/shop/shop.types";
 // Two return conventions, one rule. Reads resolve to `T | null`: a failed read is
 // indistinguishable from "no data", and every caller has a fallback. Writes
 // resolve to `ApiResult<T>` so the caller can tell success from failure and show

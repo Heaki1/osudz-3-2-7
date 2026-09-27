@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { api, ApiArchivedBeatmap, ApiChallengeScore, ApiRoundDetail } from '../../api/client';
 import { useAudioPreview } from '../../lib/audioPreview';
-import { PlayerAvatar } from './PlayerAvatar';
-import { getBeatmapStatusStyle } from '../beatmapCard.shared';
+import { PlayerAvatar } from './player/PlayerAvatar';
+import { getBeatmapStatusStyle } from '../beatmap/beatmapCard.shared';
 import {
   Crown, Star, CheckCircle2, AlertCircle,
   ChevronDown, ChevronUp, Trophy, Users, Music2, Play, Pause, Music,

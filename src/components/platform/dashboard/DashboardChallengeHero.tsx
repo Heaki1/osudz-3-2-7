@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
-import { ApiChallengeBeatmap } from '../../api/client';
-import { CurrentRound, roundLabel } from '../../lib/round';
-import { beatmapUrl } from '../../lib/submission';
+import { ApiChallengeBeatmap } from '../../../api/client';
+import { CurrentRound, roundLabel } from '../../../lib/round';
+import { beatmapUrl } from '../../../lib/submission';
 import {
   ChevronRight,
   Crown,

@@ -1,5 +1,5 @@
 import React from 'react';
-import type { ShopArtwork } from './shop.types';
+import type { ShopArtwork } from './shop/shop.types';
 
 export interface TitleRendererProps {
   title: {

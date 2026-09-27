@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { api, ApiAdminSiteSettings, ApiSiteSettings } from '../../api/client';
+import { api, ApiAdminSiteSettings, ApiSiteSettings } from '../../../api/client';
 import { Section } from './AdminDashboardPrimitives';
 import { AlertCircle, Plus, X } from 'lucide-react';
 

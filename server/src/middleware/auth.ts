@@ -4,8 +4,8 @@
 
 import type { Request, Response, NextFunction } from 'express';
 import { readSessionClaims } from '../session.js';
-import { enabledSet } from '../repo/allowedCountries.js';
-import { findForUser } from '../repo/participantPermissions.js';
+import { enabledSet } from '../repos/allowedCountries.js';
+import { findForUser } from '../repos/participantPermissions.js';
 import {
   canEnterChallenge,
   canParticipate,
@@ -13,7 +13,7 @@ import {
   type Capability,
   type CapabilityOverride,
   type UserRow,
-} from '../repo/users.js';
+} from '../repos/users.js';
 
 declare global {
   namespace Express {

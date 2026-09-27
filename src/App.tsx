@@ -32,17 +32,17 @@ import { audioPreview } from './lib/audioPreview';
 import { parseProfileUrl, profileUrl } from './lib/profileUrl';
 
 const LandingPage = lazy(() => import('./components/platform/LandingPage'));
-const ShopPage = lazy(() => import('./components/platform/ShopPage'));
-const DashboardPage = lazy(() => import('./components/platform/DashboardPage').then((m) => ({ default: m.DashboardPage })));
+const ShopPage = lazy(() => import('./components/platform/shop/ShopPage'));
+const DashboardPage = lazy(() => import('./components/platform/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const VotePage = lazy(() => import('./components/platform/VotePage').then((m) => ({ default: m.VotePage })));
 const SearchPage = lazy(() => import('./components/platform/SearchPage').then((m) => ({ default: m.SearchPage }))); 
-const AdminDashboard = lazy(() => import('./components/platform/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
+const AdminDashboard = lazy(() => import('./components/platform/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
 const PlatformSubmitPage = lazy(() => import('./components/platform/PlatformSubmitPage').then((m) => ({ default: m.PlatformSubmitPage })));
 const ArchivePage = lazy(() => import('./components/platform/ArchivePage').then((m) => ({ default: m.ArchivePage }))); 
 const RankingsPage = lazy(() => import('./components/platform/RankingsPage').then((m) => ({ default: m.RankingsPage })));
-const PlayerProfilePage = lazy(() => import('./components/platform/PlayerProfilePage'));
-const PlayerComparePage = lazy(() => import('./components/platform/PlayerComparePage').then((m) => ({ default: m.PlayerComparePage })));
-const DuelsPage = lazy(() => import('./components/platform/DuelsPage').then((m) => ({ default: m.DuelsPage })));
+const PlayerProfilePage = lazy(() => import('./components/platform/player/PlayerProfilePage'));
+const PlayerComparePage = lazy(() => import('./components/platform/player/PlayerComparePage').then((m) => ({ default: m.PlayerComparePage })));
+const DuelsPage = lazy(() => import('./components/platform/duels/DuelsPage').then((m) => ({ default: m.DuelsPage })));
 import {
   api,
   ApiChallengeBeatmap,

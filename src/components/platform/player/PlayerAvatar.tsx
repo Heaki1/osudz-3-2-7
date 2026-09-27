@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { api } from '../../api/client';
-import type { ShopArtwork } from './shop.types';
+import { api } from '../../../api/client';
+import type { ShopArtwork } from '../shop/shop.types';
 
 interface PlayerAvatarProps {
   userId?: number;

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { api, ApiAdminConfig } from '../../api/client';
+import { api, ApiAdminConfig } from '../../../api/client';
 import { Banner, Section } from './AdminDashboardPrimitives';
 import { AlertCircle } from 'lucide-react';
 

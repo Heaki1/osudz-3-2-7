@@ -21,7 +21,7 @@ import {
   toApiPlayerDzppRound,
   toApiRankingEntry,
   type RankingScope,
-} from '../repo/dzpp.js';
+} from '../repos/dzpp.js';
 
 const router = Router();
 

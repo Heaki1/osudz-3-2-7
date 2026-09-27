@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { BeatmapCard } from '../BeatmapCard';
+import { BeatmapCard } from '../beatmap/BeatmapCard';
 import { Beatmap, BeatmapComment, PlatformPage } from '../../types';
 import { api } from '../../api/client';
 import { groupBySubmission } from '../../lib/comments';

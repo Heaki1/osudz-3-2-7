@@ -16,9 +16,9 @@ import {
   Upload,
   X,
 } from 'lucide-react';
-import type { AuthUser } from './NavHeader';
-import { api, type ApiDuel } from '../../api/client';
-import { useAudioPreview } from '../../lib/audioPreview';
+import type { AuthUser } from '../NavHeader';
+import { api, type ApiDuel } from '../../../api/client';
+import { useAudioPreview } from '../../../lib/audioPreview';
 
 const fmt = (n?: number) => n === undefined ? '—' : n.toLocaleString();
 const MOCK_DUEL_TESTING = import.meta.env.DEV;

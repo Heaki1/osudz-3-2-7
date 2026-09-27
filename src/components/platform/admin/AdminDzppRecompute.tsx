@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { api, ApiDzppRecompute, ApiDzppRecomputeSummary, ApiRoundDetail } from '../../api/client';
-import { formatDeadline } from '../../lib/round';
+import { api, ApiDzppRecompute, ApiDzppRecomputeSummary, ApiRoundDetail } from '../../../api/client';
+import { formatDeadline } from '../../../lib/round';
 import { Banner, Section } from './AdminDashboardPrimitives';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 

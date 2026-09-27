@@ -20,9 +20,9 @@ import {
   clearSession,
 } from '../session.js';
 import { requireAuth } from '../middleware/auth.js';
-import { enabledSet } from '../repo/allowedCountries.js';
-import { findForUser } from '../repo/participantPermissions.js';
-import { upsertFromOsu, findByOsuId, revokeSessions, toApiUser } from '../repo/users.js';
+import { enabledSet } from '../repos/allowedCountries.js';
+import { findForUser } from '../repos/participantPermissions.js';
+import { upsertFromOsu, findByOsuId, revokeSessions, toApiUser } from '../repos/users.js';
 
 const router = Router();
 

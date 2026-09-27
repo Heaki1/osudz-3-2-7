@@ -16,7 +16,7 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import { rateLimit } from '../middleware/rateLimit.js';
-import { listForUser, put, remove, replaceImported, toApiFavorite } from '../repo/favorites.js';
+import { listForUser, put, remove, replaceImported, toApiFavorite } from '../repos/favorites.js';
 import { BeatmapNotFound, fetchBeatmapAnyStatus, fetchUserFavourites } from '../services/osu.js';
 
 const router = Router();

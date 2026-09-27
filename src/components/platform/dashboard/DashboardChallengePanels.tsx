@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { api, ApiChallengeScore } from '../../api/client';
-import { PlayerAvatar } from './PlayerAvatar';
-import { AuthUser } from './NavHeader';
+import { api, ApiChallengeScore } from '../../../api/client';
+import { PlayerAvatar } from '../player/PlayerAvatar';
+import { AuthUser } from '../NavHeader';
 import { AlertCircle, CheckCircle2, Crown, Info, RefreshCw, Target, Trophy, X } from 'lucide-react';
 
 const modAssetByLabel: Record<string, string> = {

@@ -12,8 +12,8 @@ import { Router } from 'express';
 import { parsePositiveInt } from '../lib/validation.js';
 import { requireAuth } from '../middleware/auth.js';
 import { rateLimit } from '../middleware/rateLimit.js';
-import { create, listForRound, listForSubmission, toApiComment } from '../repo/comments.js';
-import { findCurrent } from '../repo/rounds.js';
+import { create, listForRound, listForSubmission, toApiComment } from '../repos/comments.js';
+import { findCurrent } from '../repos/rounds.js';
 
 const router = Router();
 

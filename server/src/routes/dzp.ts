@@ -9,7 +9,7 @@ import { requireAuth } from '../middleware/auth.js';
 import {
   getCurrentShopSeason,
   getDzpHistoryForUser,
-} from '../repo/shop.js';
+} from '../repos/shop.js';
 
 const router = Router();
 

@@ -34,7 +34,7 @@ import {
   Settings,
   Gift,
 } from 'lucide-react';
-import { parseProfileUrl, profileUrl } from '../../lib/profileUrl';
+import { parseProfileUrl, profileUrl } from '../../../lib/profileUrl';
 import {
   api,
   type ApiChallengeBeatmap,
@@ -42,11 +42,11 @@ import {
   type ApiPlayerDzppRound,
   type ApiPlayerProfile,
   type ApiPlayerShopItem,
-} from '../../api/client';
-import { averagePlacement, monthLabel } from '../../lib/rankings';
-import type { ShopProfile } from './shop.types';
+} from '../../../api/client';
+import { averagePlacement, monthLabel } from '../../../lib/rankings';
+import type { ShopProfile } from '../shop/shop.types';
 import { PlayerAvatar } from './PlayerAvatar';
-import { TitleRenderer } from './TitleRenderer';
+import { TitleRenderer } from '../TitleRenderer';
 import { PlayerCareerProgression } from './PlayerCareerProgression';
 import {
   ChallengeCollection,

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { api, ApiShopItemAsset } from '../../api/client';
+import { api, ApiShopItemAsset } from '../../../api/client';
 import { Banner, Section } from './AdminDashboardPrimitives';
-import type { ItemCategory, OwnershipType, ShopItem } from './shop.types';
+import type { ItemCategory, OwnershipType, ShopItem } from '../shop/shop.types';
 import { X } from 'lucide-react';
 
 export function ShopTab() {

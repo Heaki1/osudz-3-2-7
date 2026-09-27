@@ -26,8 +26,8 @@ import {
   scoreRound,
   toRoundPlay,
   type DzppRoundPlay,
-} from '../repo/dzpp.js';
-import { orderFor } from '../repo/challengeScores.js';
+} from '../repos/dzpp.js';
+import { orderFor } from '../repos/challengeScores.js';
 
 const target = resolveTarget();
 printTarget(target);

@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useAudioPreview } from '../../lib/audioPreview';
 import { Beatmap } from '../../types';
 import { Star, Heart, CheckCircle2, Music2, Upload, Play, Pause } from 'lucide-react';
-import { getBeatmapStatusStyle } from '../beatmapCard.shared';
-import { BeatmapCardAudio } from '../beatmapCard/BeatmapCardAudio';
-import { BeatmapDifficultySelector } from '../beatmapCard/BeatmapDifficultySelector';
+import { getBeatmapStatusStyle } from '../beatmap/beatmapCard.shared';
+import { BeatmapCardAudio } from '../beatmap/beatmapCard/BeatmapCardAudio';
+import { BeatmapDifficultySelector } from '../beatmap/beatmapCard/BeatmapDifficultySelector';
 
 interface BeatmapCardPlatformProps {
   beatmap: Beatmap;

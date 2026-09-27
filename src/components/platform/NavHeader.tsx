@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Phase, PlatformPage } from '../../types';
-import { PlayerAvatar } from './PlayerAvatar';
+import { PlayerAvatar } from './player/PlayerAvatar';
 import { CurrentRound, isBallotOpen, isPageOpen, useCountdown } from '../../lib/round';
 import {
   Home,

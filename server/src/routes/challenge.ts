@@ -6,26 +6,26 @@
 // Reads are public. Writing a score is gated by requireCanChallenge.
 
 import { Router } from 'express';
-import { addActivity } from '../repo/platform.js';
+import { addActivity } from '../repos/platform.js';
 import type { Response } from 'express';
 import { parsePositiveInt, parsePositiveSafeInt } from '../lib/validation.js';
 import { requireAuth, requireCanChallenge } from '../middleware/auth.js';
 import { rateLimit } from '../middleware/rateLimit.js';
-import { findById as findRound, findCurrent } from '../repo/rounds.js';
-import { findById as findSubmission } from '../repo/submissions.js';
+import { findById as findRound, findCurrent } from '../repos/rounds.js';
+import { findById as findSubmission } from '../repos/submissions.js';
 import {
   findForUser,
   listForRound,
   qualifies,
   toApiChallengeScore,
   upsert,
-} from '../repo/challengeScores.js';
+} from '../repos/challengeScores.js';
 import {
   listForRound as listChallengeBeatmaps,
   findBySubmission as findChallengeBeatmap,
   toApiChallengeBeatmap,
-} from '../repo/challengeBeatmaps.js';
-import { scoreRound, toRoundPlay } from '../repo/dzpp.js';
+} from '../repos/challengeBeatmaps.js';
+import { scoreRound, toRoundPlay } from '../repos/dzpp.js';
 import {
   ScoreNotFound,
   fetchBeatmapAnyStatus,

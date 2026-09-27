@@ -11,7 +11,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { api, type ApiPlayerProfile } from '../../api/client';
+import { api, type ApiPlayerProfile } from '../../../api/client';
 import {
   ARTWORK_ASPECT_RATIO,
   ShopError,
@@ -27,8 +27,8 @@ import {
   deriveViewerState,
   isVisibleInShop,
   type ViewerStateResult,
-} from './viewerState';
-import { TitleRenderer } from './TitleRenderer';
+} from '../viewerState';
+import { TitleRenderer } from '../TitleRenderer';
 
 const CATEGORY_LABELS: Record<ItemCategory, string> = {
   title: 'Titles',

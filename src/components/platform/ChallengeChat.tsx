@@ -11,7 +11,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { MessageSquare, Send, Trash2, ShieldCheck, X } from 'lucide-react';
 import { api, ApiChatMessage } from '../../api/client';
-import { PlayerAvatar } from './PlayerAvatar';
+import { PlayerAvatar } from './player/PlayerAvatar';
 import { AuthUser } from './NavHeader';
 
 const POLL_INTERVAL_MS = 8_000;

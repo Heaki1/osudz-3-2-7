@@ -1,9 +1,9 @@
 import React from 'react';
 import { Crown, Trophy } from 'lucide-react';
-import { ApiLevelRushEntry } from '../../api/client';
-import { PlayerAvatar } from './PlayerAvatar';
-import { AuthUser } from './NavHeader';
-import { SectionHeader } from './PlayerProfileSections';
+import { ApiLevelRushEntry } from '../../../api/client';
+import { PlayerAvatar } from '../player/PlayerAvatar';
+import { AuthUser } from '../NavHeader';
+import { SectionHeader } from '../player/PlayerProfileSections';
 
 interface DashboardLevelRushProps {
   entries: ApiLevelRushEntry[] | null;

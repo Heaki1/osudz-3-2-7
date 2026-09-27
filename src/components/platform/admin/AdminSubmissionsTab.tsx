@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import type { ApiSubmission } from '../../api/client';
-import { api } from '../../api/client';
-import { beatmapUrl } from '../../lib/submission';
-import { CurrentRound, roundLabel } from '../../lib/round';
+import type { ApiSubmission } from '../../../api/client';
+import { api } from '../../../api/client';
+import { beatmapUrl } from '../../../lib/submission';
+import { CurrentRound, roundLabel } from '../../../lib/round';
 import { Link as LinkIcon } from 'lucide-react';
 
 export interface AdminSubmissionsTabProps {

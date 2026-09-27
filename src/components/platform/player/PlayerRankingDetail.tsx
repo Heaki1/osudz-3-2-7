@@ -11,11 +11,11 @@ import {
   Check,
   X,
 } from 'lucide-react';
-import { TitleRenderer } from './TitleRenderer';
+import { TitleRenderer } from '../TitleRenderer';
 import { PlayerAvatar } from './PlayerAvatar';
-import { api, ApiPlayerDzppMap, ApiPlayerDzppRound, ApiRankingEntry } from '../../api/client';
-import { averagePlacement, monthLabel } from '../../lib/rankings';
-import type { ShopProfile } from './shop.types';
+import { api, ApiPlayerDzppMap, ApiPlayerDzppRound, ApiRankingEntry } from '../../../api/client';
+import { averagePlacement, monthLabel } from '../../../lib/rankings';
+import type { ShopProfile } from '../shop/shop.types';
 
 // ── ONE PLAYER'S DZPP ─────────────────────────────────────────────────────────
 //

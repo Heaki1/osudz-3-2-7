@@ -15,11 +15,11 @@ import {
   ScrollText,
   Trophy,
 } from 'lucide-react';
-import { BeatmapCard } from '../BeatmapCard';
-import type { ApiChallengeBeatmap, ApiChallengeCollectionItem, ApiPlayerDzppMap, ApiPlayerDzppRound, ApiPlayerShopItem } from '../../api/client';
-import type { Beatmap } from '../../types';
-import type { ItemCategory } from './shop.types';
-import { TitleRenderer } from './TitleRenderer';
+import { BeatmapCard } from '../../beatmap/BeatmapCard';
+import type { ApiChallengeBeatmap, ApiChallengeCollectionItem, ApiPlayerDzppMap, ApiPlayerDzppRound, ApiPlayerShopItem } from '../../../api/client';
+import type { Beatmap } from '../../../types';
+import type { ItemCategory } from '../shop/shop.types';
+import { TitleRenderer } from '../TitleRenderer';
 export interface FlatPerformance extends ApiPlayerDzppMap {
   roundId: number;
   roundNumber: number;

@@ -6,8 +6,8 @@ import {
 } from 'lucide-react';
 import { api, ApiRankingEntry, ApiRankingPage } from '../../api/client';
 import { AuthUser } from './NavHeader';
-import { PlayerRankingDetail } from './PlayerRankingDetail';
-import { PlayerAvatar } from './PlayerAvatar';
+import { PlayerRankingDetail } from './player/PlayerRankingDetail';
+import { PlayerAvatar } from './player/PlayerAvatar';
 import { pageNumbers, showingRange, totalPages } from '../../lib/rankings';
 
 // ── DZ PERFORMANCE RANKINGS ───────────────────────────────────────────────────

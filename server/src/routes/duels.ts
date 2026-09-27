@@ -5,7 +5,7 @@ import { mkdir, readFile, rename, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { optionalAuth, requireAuth } from '../middleware/auth.js';
 import { fetchBeatmap, fetchBeatmapsetArchive, fetchUserScoresForDifficulty, parseDifficultyId, ScoreNotFound, BeatmapNotFound } from '../services/osu.js';
-import { acceptDuel, acceptRules, createDuel, getBalance, getDuel, hasAcceptedRules, listDuels, recordScore, setMockOpponent, setReplayPath, settleExpiredDuels, type DuelRow } from '../repo/duels.js';
+import { acceptDuel, acceptRules, createDuel, getBalance, getDuel, hasAcceptedRules, listDuels, recordScore, setMockOpponent, setReplayPath, settleExpiredDuels, type DuelRow } from '../repos/duels.js';
 const router=Router();
 type DuelMeta = { beatmapsetId:number; coverUrl:string; previewUrl:string; mapper:string; bpm:number; lengthSeconds:number; cs:number|null; ar:number|null; od:number|null; hp:number|null; maxCombo:number|null; mapStatus:string; modeInt:number };
 const beatmapMetaCache = new Map<number, { value:DuelMeta; expiresAt:number }>();

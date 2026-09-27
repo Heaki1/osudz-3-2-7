@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Activity, BarChart3, Gauge, Medal, Search, Swords, Target, Trophy, Zap } from 'lucide-react';
-import { api } from '../../api/client';
+import { api } from '../../../api/client';
 
 type CompareResult = Awaited<ReturnType<typeof api.platform.compare>>;
 type CompareData = Extract<CompareResult, { ok: true }>['data'];

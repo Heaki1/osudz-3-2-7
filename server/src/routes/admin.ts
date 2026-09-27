@@ -6,7 +6,7 @@
 // (see repo/users.ts), so granting or revoking it is an env change plus a
 // re-login, not a manual UPDATE.
 import { parsePositiveInt, parsePositiveSafeInt } from '../lib/validation.js';
-import { addAdminDzpAdjustment } from '../repo/shop.js';
+import { addAdminDzpAdjustment } from '../repos/shop.js';
 import {
   createShopItemAssetAdmin,
   createShopItemDraft,
@@ -15,7 +15,7 @@ import {
   setShopItemAssetActiveAdmin,
   updateShopItemAdmin,
   updateShopItemLifecycleAdmin,
-} from '../repo/shop.js';
+} from '../repos/shop.js';
 import { Router } from 'express';
 import type { Response } from 'express';
 import { requireAdmin } from '../middleware/auth.js';
@@ -33,13 +33,13 @@ import {
   setPhase,
   skipEmptyVoting,
   toApiRound,
-} from '../repo/rounds.js';
+} from '../repos/rounds.js';
 import {
   freezeEndedRound,
   listRecomputes,
   recomputeRound,
   toApiDzppRecompute,
-} from '../repo/dzpp.js';
+} from '../repos/dzpp.js';
 import {
   findById as findSubmission,
   listForRound,
@@ -47,27 +47,27 @@ import {
   toApiSubmission,
   REVIEW_DECISIONS,
   type ReviewDecision,
-} from '../repo/submissions.js';
+} from '../repos/submissions.js';
 import {
   findById as findUserById,
   findByOsuId,
   revokeSessions,
   listAllWithOverrides,
   toApiAdminUser,
-} from '../repo/users.js';
+} from '../repos/users.js';
 import {
   listAll as listOverrides,
   remove as removeOverride,
   toApiOverride,
   upsert as upsertOverride,
-} from '../repo/participantPermissions.js';
-import { enabledSet } from '../repo/allowedCountries.js';
+} from '../repos/participantPermissions.js';
+import { enabledSet } from '../repos/allowedCountries.js';
 import {
   CONFIGURABLE_STATUSES,
   settings,
   update,
   type SiteSettingsPatch,
-} from '../repo/siteSettings.js';
+} from '../repos/siteSettings.js';
 import {
   isCountryCode,
   listAll as listCountries,
@@ -75,7 +75,7 @@ import {
   remove as removeCountry,
   setEnabled as setCountryEnabled,
   toApiAllowedCountry,
-} from '../repo/allowedCountries.js';
+} from '../repos/allowedCountries.js';
 import {
   announceBallotClosed,
   announceCorrection,
@@ -85,13 +85,13 @@ import {
   isConfigured,
   announce,
 } from '../services/discord.js';
-import { listForRound as listVotes, toApiVoteAudit } from '../repo/votes.js';
-import { addActivity } from '../repo/platform.js';
+import { listForRound as listVotes, toApiVoteAudit } from '../repos/votes.js';
+import { addActivity } from '../repos/platform.js';
 import {
   qualifies,
   toApiChallengeScore,
   upsert as upsertScore,
-} from '../repo/challengeScores.js';
+} from '../repos/challengeScores.js';
 
 const router = Router();
 

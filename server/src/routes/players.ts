@@ -23,12 +23,12 @@ import { mkdir, rename, unlink } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
-import { getChallengeMapCollection, transferChallengeMap } from '../repo/challengeMapOwnership.js';
+import { getChallengeMapCollection, transferChallengeMap } from '../repos/challengeMapOwnership.js';
 import multer from 'multer';
 import { pool } from '../db.js';
-import { getPlayerByUsername, getPlayerOwnedItems } from '../repo/players.js';
-import { getLivePlayerDzpp } from '../repo/dzpp.js';
-import { findCurrent } from '../repo/rounds.js';
+import { getPlayerByUsername, getPlayerOwnedItems } from '../repos/players.js';
+import { getLivePlayerDzpp } from '../repos/dzpp.js';
+import { findCurrent } from '../repos/rounds.js';
 import { fetchPublicUser } from '../services/osu.js';
 
 const router = Router();

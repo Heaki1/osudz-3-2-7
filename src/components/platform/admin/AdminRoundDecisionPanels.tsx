@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { api, ApiResultCorrection, ApiSubmission, ApiVoteAudit } from '../../api/client';
-import { CurrentRound, formatDeadline, roundLabel } from '../../lib/round';
-import { PlayerAvatar } from './PlayerAvatar';
+import { api, ApiResultCorrection, ApiSubmission, ApiVoteAudit } from '../../../api/client';
+import { CurrentRound, formatDeadline, roundLabel } from '../../../lib/round';
+import { PlayerAvatar } from '../player/PlayerAvatar';
 import { Banner, Section } from './AdminDashboardPrimitives';
 import { AlertCircle, AlertTriangle, CheckCircle2, Circle, Eye, Scale, SkipForward, Trophy } from 'lucide-react';
 

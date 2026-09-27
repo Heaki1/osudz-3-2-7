@@ -1,4 +1,4 @@
-import type { BeatmapStatus } from '../types';
+import type { BeatmapStatus } from '../../types';
 
 export interface BeatmapStatusStyle {
   bg: string;

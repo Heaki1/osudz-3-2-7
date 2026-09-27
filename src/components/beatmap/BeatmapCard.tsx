@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { BeatmapCardAudio } from './beatmapCard/BeatmapCardAudio';
-import { Beatmap, BeatmapComment } from '../types';
-import { PlayerAvatar } from './platform/PlayerAvatar';
+import { Beatmap, BeatmapComment } from '../../types';
+import { PlayerAvatar } from '../platform/player/PlayerAvatar';
 import {
   Star, Play, Pause, MessageSquare, Heart, Gift,
   CheckCircle2, Trophy, Crown, Target, Flame, Medal,

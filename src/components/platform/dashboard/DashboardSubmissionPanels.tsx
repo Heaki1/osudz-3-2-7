@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { PlatformPage } from '../../types';
-import { ApiSubmission } from '../../api/client';
-import { CurrentRound, formatDeadline } from '../../lib/round';
-import { beatmapUrl, REVIEW_PRESENTATION, toBeatmap } from '../../lib/submission';
-import { BeatmapCardPlatform } from './BeatmapCardPlatform';
-import { WithdrawButton } from './WithdrawButton';
+import { PlatformPage } from '../../../types';
+import { ApiSubmission } from '../../../api/client';
+import { CurrentRound, formatDeadline } from '../../../lib/round';
+import { beatmapUrl, REVIEW_PRESENTATION, toBeatmap } from '../../../lib/submission';
+import { BeatmapCardPlatform } from '../BeatmapCardPlatform';
+import { WithdrawButton } from '../WithdrawButton';
 import { ChevronRight, CheckCircle2, Link as LinkIcon, RefreshCw, Upload } from 'lucide-react';
 
 function Stat({ label, value, tone }: { label: string; value: string; tone: string }) {
