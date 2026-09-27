@@ -33,7 +33,7 @@ export default defineConfig({
   test: {
     name: 'server',
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'test/**/*.test.ts'],
     env: {
       SESSION_SECRET: 'test-only-session-secret',
       OSU_CLIENT_ID: '0',
