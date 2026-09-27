@@ -228,3 +228,40 @@ export async function comparePlayers(userA: string, userB: string) {
      WHERE lower(u.username) IN (lower($1), lower($2))`, [userA, userB]);
   return rows;
 }
+
+export interface RoundRecapRow {
+  id: number;
+  round_number: number;
+  month: string;
+  year: number;
+  created_at: Date;
+  winner_vote_count: number;
+  total_votes: number;
+  title: string | null;
+  artist: string | null;
+  difficulty_name: string | null;
+  cover_url: string | null;
+  submitted_by: number | null;
+}
+
+export async function getLatestRoundRecap(): Promise<{
+  round: RoundRecapRow | null;
+  nextStart: Date | null;
+}> {
+  const { rows } = await pool.query<RoundRecapRow>(`
+    SELECT r.id, r.round_number, r.month, r.year, r.created_at,
+           r.winner_vote_count, r.total_votes,
+           s.title, s.artist, s.difficulty_name, s.cover_url, s.submitted_by
+      FROM rounds r
+      LEFT JOIN submissions s ON s.id = r.winning_submission_id
+     WHERE r.phase = 'ended'
+     ORDER BY r.round_number DESC LIMIT 1`);
+  const round = rows[0] ?? null;
+  if (!round) return { round: null, nextStart: null };
+
+  const next = await pool.query<{ created_at: Date }>(
+    'SELECT created_at FROM rounds WHERE round_number > $1 ORDER BY round_number ASC LIMIT 1',
+    [round.round_number],
+  );
+  return { round, nextStart: next.rows[0]?.created_at ?? null };
+}

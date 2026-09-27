@@ -1,7 +1,6 @@
 import { Router } from 'express';
-import { getLevelRush, getMappingStats, getPlayerProgress, getPlayerStreak, listActivity, comparePlayers } from '../repos/platform.js';
+import { getLevelRush, getMappingStats, getPlayerProgress, getPlayerStreak, listActivity, comparePlayers, getLatestRoundRecap } from '../repos/platform.js';
 import { fetchPublicUser, fetchPublicUserBestScores } from '../services/osu.js';
-import { pool } from '../db.js';
 
 const router = Router();
 
@@ -32,19 +31,8 @@ router.get('/mapping-stats', async (_req, res) => {
 
 router.get('/recap', async (_req, res) => {
   try {
-    const { rows } = await pool.query(`
-      SELECT r.id, r.round_number, r.month, r.year, r.created_at,
-             r.winner_vote_count, r.total_votes,
-             s.title, s.artist, s.difficulty_name, s.cover_url, s.submitted_by
-        FROM rounds r
-        LEFT JOIN submissions s ON s.id = r.winning_submission_id
-       WHERE r.phase = 'ended'
-       ORDER BY r.round_number DESC LIMIT 1`);
-    if (rows.length === 0) return res.json(null);
-    const round = rows[0];
-    const next = await pool.query<{ created_at: Date }>(
-      'SELECT created_at FROM rounds WHERE round_number > $1 ORDER BY round_number ASC LIMIT 1', [round.round_number]);
-    const nextStart = next.rows[0]?.created_at ?? null;
+    const { round, nextStart } = await getLatestRoundRecap();
+    if (!round) return res.json(null);
     const archiveAt = nextStart ? new Date(nextStart.getTime() + 24 * 60 * 60 * 1000) : null;
     if (archiveAt && Date.now() >= archiveAt.getTime()) return res.json(null);
     res.json({ roundNumber: round.round_number, month: round.month, year: round.year, winner: round.title ? { title: round.title, artist: round.artist, difficultyName: round.difficulty_name, coverUrl: round.cover_url } : null, winnerVoteCount: round.winner_vote_count, totalVotes: round.total_votes, archiveAt: archiveAt?.toISOString() ?? null });

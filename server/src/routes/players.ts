@@ -25,8 +25,7 @@ import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import { getChallengeMapCollection, transferChallengeMap } from '../repos/challengeMapOwnership.js';
 import multer from 'multer';
-import { pool } from '../db.js';
-import { getPlayerByUsername, getPlayerOwnedItems } from '../repos/players.js';
+import { getPlayerByUsername, getPlayerOwnedItems, getProfileBannerUrl, updateProfileBannerUrl } from '../repos/players.js';
 import { getLivePlayerDzpp } from '../repos/dzpp.js';
 import { findCurrent } from '../repos/rounds.js';
 import { fetchPublicUser } from '../services/osu.js';
@@ -202,14 +201,9 @@ router.put(
       return;
     }
 
-    const previous = await pool.query<{
-      profile_banner_url: string | null;
-    }>(
-      'SELECT profile_banner_url FROM users WHERE id = $1',
-      [userId],
-    );
+    const previousBannerUrl = await getProfileBannerUrl(userId);
 
-    if (previous.rowCount === 0) {
+    if (previousBannerUrl === undefined) {
       await unlink(file.path).catch(() => undefined);
       res.status(404).json({ error: 'Player not found' });
       return;
@@ -221,11 +215,7 @@ router.put(
 
     try {
       await rename(file.path, newPath);
-
-      await pool.query(
-        'UPDATE users SET profile_banner_url = $1 WHERE id = $2',
-        [bannerUrl, userId],
-      );
+      await updateProfileBannerUrl(userId, bannerUrl);
     } catch (err) {
       await unlink(newPath).catch(() => undefined);
       await unlink(file.path).catch(() => undefined);
@@ -241,7 +231,7 @@ router.put(
       return;
     }
 
-    const oldUrl = previous.rows[0].profile_banner_url;
+    const oldUrl = previousBannerUrl;
 
     if (oldUrl) {
       const prefix = '/uploads/profile-banners/';

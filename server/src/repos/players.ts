@@ -177,6 +177,22 @@ export async function getPlayerByUsername(
   return row;
 }
 
+export async function getProfileBannerUrl(userId: number): Promise<string | null | undefined> {
+  const { rows } = await pool.query<{ profile_banner_url: string | null }>(
+    'SELECT profile_banner_url FROM users WHERE id = $1',
+    [userId],
+  );
+  if (rows.length === 0) return undefined;
+  return rows[0].profile_banner_url;
+}
+
+export async function updateProfileBannerUrl(userId: number, bannerUrl: string): Promise<void> {
+  await pool.query(
+    'UPDATE users SET profile_banner_url = $1 WHERE id = $2',
+    [bannerUrl, userId],
+  );
+}
+
 // ── Player owned Shop items ─────────────────────────────────────────────────
 
 export interface PlayerOwnedItemRow {
