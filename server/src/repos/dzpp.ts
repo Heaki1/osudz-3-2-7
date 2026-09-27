@@ -1,537 +1,101 @@
-// DZ Performance Points — the scoring formula, and the frozen rows it produces.
-//
-// TWO HALVES, and the split is the point. Everything down to scoreRound is PURE: no
-// database, no Express, no osu! API, so every rule in the formula is testable without any
-// of them. The table access is below it, and hands the pure half the facts it has already
-// locked. The same shape as repo/rounds.ts, where refuseSkipVoting is a pure function of a
-// round and a count, and repo/siteSettings.ts, where checkBeatmapRules is a pure function
-// of a beatmap and the rules.
-//
-// The specification is docs/superpowers/specs/2026-09-05-dzpp-design.md, approved
-// 2026-09-05. Every constant below is a policy decision recorded there rather than a
-// number that can be tuned in passing: changing one needs a new DZPP_FORMULA_VERSION,
-// because frozen historical rounds carry the version they were scored under.
-//
-//   finalDzpp = round(performance + completion + qualification + placement)
-//   placement = basePlacementPoints(place) x fieldFactor(qualifiedPlayers)
-//
-// completion     = CHALLENGE_SCORE_POINTS
-//               + (hadApprovedSubmission ? SUBMISSION_APPROVED_POINTS : 0)
-//               + (hadVote               ? VOTE_POINTS               : 0)
-//
-// qualification  = (hadModCompliance         ? MOD_COMPLIANCE_POINTS          : 0)
-//               + (hadRequirementAchievement ? REQUIREMENT_ACHIEVEMENT_POINTS : 0)
-//
-// There is deliberately no difficulty multiplier, no accuracy term, no full-combo bonus
-// and no winner bonus. osu! pp already prices star rating, accuracy, misses and combo,
-// and 1st place is already rewarded by the placement table.
-//
-// DZPP IS NOT osu! pp. The performance term is the pp of the play itself, read from the
-// score; nothing here reads users.global_rank or any profile total.
+// DZPP repository: persistence and orchestration only.
 
 import type { PoolClient } from 'pg';
 import { pool } from '../db.js';
 import { listForRound } from './challengeScores.js';
-import { calculateDzpRewards, type DzpPlayerReward } from './dzp.js';
+import {
+  DZPP_FORMULA_VERSION,
+  CHALLENGE_SCORE_POINTS,
+  SUBMISSION_APPROVED_POINTS,
+  VOTE_POINTS,
+  MOD_COMPLIANCE_POINTS,
+  REQUIREMENT_ACHIEVEMENT_POINTS,
+  scoreOne,
+  asPp,
+  type DzppBeatmapResult,
+  type DzppScoreInput,
+  type DzppBreakdown,
+  type DzppRoundPlay,
+  type DzppRoundResult,
+} from '../domain/dzpp/formula.js';
+import {
+  FIELD_FACTOR_TARGET,
+  PLACEMENT_TABLE,
+  fieldFactor,
+  basePlacementPoints,
+  placementPoints,
+} from '../domain/dzpp/placement.js';
+import { scoreRound, toRoundPlay, qualificationAwards } from '../domain/dzpp/qualification.js';
+import {
+  calculateRoundDzpRewards,
+  seasonNumberForRound,
+  type DzpPlayerReward,
+} from '../domain/dzpp/rewards.js';
+import {
+  RANKING_COUNTRY,
+  SEASON_SIZE,
+  seasonBounds,
+  type CurrentSeason,
+  type RankingMeta,
+  type RankingRow,
+  type RankingScope,
+  type PlayerRoundMapRow,
+  type PlayerRoundRow,
+} from '../domain/dzpp/rankings.js';
+import {
+  refuseFinalize,
+  type FinalizeFailure,
+  type FinalizeOutcome,
+  refuseRecompute,
+  type RecomputeFailure,
+  type RecomputeOutcome,
+  type RecomputeSummary,
+  mergeBestBeatmapResults,
+} from '../domain/dzpp/recompute.js';
 
-/**
- * Bumped whenever a constant or a rule below changes. Stored on every frozen row so a
- * round scored under version 1 stays explainable after version 2 exists — roadmap rule 7,
- * that historical DZPP must not silently change when a constant is retuned.
- */
-export const DZPP_FORMULA_VERSION = 4;
-
-/**
- * Completion is now three independent sub-awards that together replace the old flat
- * COMPLETION_POINTS = 10 constant.
- *
- * CHALLENGE_SCORE_POINTS — awarded unconditionally for having a challenge_scores row.
- *   Submitting or importing a score during the challenge phase earns this, whether the
- *   play met the requirements or not.
- *
- * SUBMISSION_APPROVED_POINTS — awarded when the player submitted a beatmap for the round
- *   AND an administrator approved it.
- *
- * VOTE_POINTS — awarded when the player cast a vote for the round AND still held it when
- *   the round ended (i.e. a votes row exists at finalization time).
- *
- * Maximum completion = 2 + 3 + 5 = 10, matching the old flat constant.
- */
-export const CHALLENGE_SCORE_POINTS = 2;
-export const SUBMISSION_APPROVED_POINTS = 3;
-export const VOTE_POINTS = 5;
-
-/**
- * Qualification Points are split into two independent sub-awards.
- *
- * MOD_COMPLIANCE_POINTS — awarded when the player used the required mod(s) for the round.
- *   Checkable per play: every required acronym must be present (NM means no mods at all).
- *
- * REQUIREMENT_ACHIEVEMENT_POINTS — awarded to the winner(s) of the challenge metric:
- *   Full Combo        -> every mod-compliant player whose play reached the beatmap max combo
- *   Top #1 Score      -> player(s) with the highest score among the qualified field
- *   Best Accuracy     -> player(s) with the highest accuracy among the qualified field
- *   Lowest Miss Count -> player(s) with the lowest miss count among the qualified field
- *
- * Ties share the award: all players at the top metric value receive +15.
- *
- * Placement Points still require FULL qualification (both mod + challenge requirement met,
- * i.e. the existing `qualified` boolean). Partial qualification earns points but not placement.
- *
- * Maximum qualification = 10 + 15 = 25, matching the old flat constant.
- */
-export const MOD_COMPLIANCE_POINTS = 10;
-export const REQUIREMENT_ACHIEVEMENT_POINTS = 15;
-
-/**
- * Base placement award, 1st place first. Ninth place and below earn nothing, which is the
- * absence of an entry rather than a zero in the table.
- */
-export const PLACEMENT_TABLE = [40, 36, 32, 28, 24, 20, 16, 12, 8, 4] as const;
-
-/** The qualified field size at which placement points are paid in full (10 qualified players). */
-export const FIELD_FACTOR_TARGET = 10;
-
-/**
- * How much of the placement table a round actually pays, given how many players
- * qualified.
- *
- * THE SMALL-FIELD FIX, and the reason the earliest months cannot mint the most points:
- * winning a three-player round is worth 50 x 0.3 = 15, not 50. Without it the
- * thinnest turnout would produce the largest rewards and the first few players would lock
- * the table permanently.
- *
- * Every reachable value is an exact tenth, so the arithmetic is exact in binary floating
- * point and numeric(6,3) stores the product without loss. There is no rounding step here
- * for that reason — adding one would only hide drift that should never occur.
- *
- * A field of nobody returns 0 rather than a negative or a NaN. It is not reachable
- * through scoreRound, which only places players who qualified, but the function stays
- * total so a future caller cannot get a surprise out of it.
- */
-export function fieldFactor(qualifiedPlayers: number): number {
-  // Written as !(x > 0) rather than x <= 0 so that NaN lands here too.
-  if (!(qualifiedPlayers > 0)) return 0;
-  return Math.min(1, qualifiedPlayers / FIELD_FACTOR_TARGET);
-}
-
-/**
- * The table value for a placement, before the field factor.
- *
- * Anything that is not a whole place from 1st down earns nothing. scoreRound numbers from
- * 1 and never produces such a value, so this guard exists for the caller that has not
- * been written yet.
- */
-export function basePlacementPoints(placement: number): number {
-  if (!Number.isInteger(placement) || placement < 1) return 0;
-  return PLACEMENT_TABLE[placement - 1] ?? 0;
-}
-
-/**
- * What a placement is actually worth in a round of this size.
- *
- * The field factor applies to THIS TERM ONLY. Completion, qualification and the
- * performance value are all unaffected by turnout.
- */
-export function placementPoints(
-  placement: number,
-  qualifiedPlayers: number
-): number {
-  const base = basePlacementPoints(placement);
-  if (base === 0) return 0;
-
-  return Math.round(base * fieldFactor(qualifiedPlayers));
-}
-
-// ── One player, one round ────────────────────────────────────────────────────
-
-/** What the formula needs about a single play. */
-export interface DzppScoreInput {
-  /**
-   * The osu! pp for this play, or null when osu! reported none — a Loved beatmap, an
-   * unranked mod combination. Read from the score itself, never from the player's profile.
-   */
-  pp: number | null;
-  /**
-   * challenge_scores.qualified AS STORED, never recomputed here. 002_challenge_scores.sql
-   * stores it so a past round keeps its verdict when the rule changes, and that is the
-   * precedent this whole feature follows.
-   */
-  qualified: boolean;
-  /** Position among the qualified plays, or null when this play did not qualify. */
-  placement: number | null;
-  /** How many players qualified in the round — the field factor's input. */
-  qualifiedPlayers: number;
-  /**
-   * True when this player submitted a beatmap for the round AND an administrator approved
-   * it. Earns SUBMISSION_APPROVED_POINTS. False when there was no submission or it was
-   * pending/rejected.
-   */
-  hadApprovedSubmission: boolean;
-  /**
-   * True when this player held a vote for the round at the moment the round was finalized.
-   * Earns VOTE_POINTS. A vote that was retracted before finalization does not count.
-   */
-  hadVote: boolean;
-  /**
-   * True when this player used the required mod(s) for the round.
-   * Earns MOD_COMPLIANCE_POINTS. Computed by scoreRound from mods vs modRequirement.
-   */
-  hadModCompliance: boolean;
-  /**
-   * True when this player achieved the top metric for the challenge requirement.
-   * Earns REQUIREMENT_ACHIEVEMENT_POINTS. Computed by scoreRound across the whole field.
-   */
-  hadRequirementAchievement: boolean;
-}
-
-/**
- * The frozen result, term by term.
- *
- * The breakdown travels with the total rather than being recoverable from it, because the
- * ranking page has to be able to say WHY a player has the points they have. An opaque
- * formula in a small community produces arguments instead of competition.
- */
-export interface DzppBreakdown {
-  /** null when osu! had no pp for the play. Distinct from a real 0.00pp play. */
-  performanceValue: number | null;
-  completionPoints: number;
-  qualificationPoints: number;
-  placementPoints: number;
-  /** null when the play did not qualify, whatever the caller passed in. */
-  placement: number | null;
-  qualified: boolean;
-  fieldSize: number;
-  /** The sum, rounded half-up to a whole number. */
-  finalDzpp: number;
-  formulaVersion: number;
-}
-
-/**
- * A performance value this formula is willing to use, or null.
- *
- * osu! cannot report a NaN, an infinity or a negative pp, so any of those means something
- * upstream is wrong. Reading them as "no value" keeps a bad number out of numeric(8,2) and
- * out of the total — the alternative is storing a NaN, or letting a negative subtract DZPP
- * a player legitimately earned elsewhere in the sum.
- */
-const usablePerformance = (pp: number | null): number | null =>
-  pp !== null && Number.isFinite(pp) && pp >= 0 ? pp : null;
-
-/**
- * Scores one play.
- *
- * CHALLENGE_SCORE_POINTS IS UNCONDITIONAL HERE, and that is not a missing rule: this is
- * only ever called for a play that exists. A player with no challenge_scores row gets no
- * breakdown and no frozen row at all, which is the honest representation of not taking
- * part and is what keeps the ranking's rounds-played count right for free. One row per
- * player per round is guaranteed by challenge_scores_one_per_user_per_round, so attempts
- * cannot multiply the award.
- *
- * SUBMISSION_APPROVED_POINTS and VOTE_POINTS are conditional on the facts the caller
- * supplies. finalizeRound and recomputeRound query the database for these before scoring.
- *
- * A placement passed alongside qualified: false is dropped rather than honoured. Only
- * qualified players receive placement points, and a caller bug must not become points.
- */
-export function scoreOne(input: DzppScoreInput): DzppBreakdown {
-  const performanceValue = usablePerformance(input.pp);
-  const placement = input.qualified ? input.placement : null;
-  const placementAward =
-    placement === null ? 0 : placementPoints(placement, input.qualifiedPlayers);
-  const qualificationAward =
-    (input.hadModCompliance ? MOD_COMPLIANCE_POINTS : 0) +
-    (input.hadRequirementAchievement ? REQUIREMENT_ACHIEVEMENT_POINTS : 0);
-  const completionPoints =
-    CHALLENGE_SCORE_POINTS +
-    (input.hadApprovedSubmission ? SUBMISSION_APPROVED_POINTS : 0) +
-    (input.hadVote ? VOTE_POINTS : 0);
-
-  return {
-    performanceValue,
-    completionPoints,
-    qualificationPoints: qualificationAward,
-    placementPoints: placementAward,
-    placement,
-    qualified: input.qualified,
-    fieldSize: input.qualifiedPlayers,
-    // Rounded once, at the end. Per round rather than per total, so the rows on a
-    // player's detail panel sum exactly to the total on the leaderboard.
-    finalDzpp: Math.round(
-      (performanceValue ?? 0) + completionPoints + qualificationAward + placementAward
-    ),
-    formulaVersion: DZPP_FORMULA_VERSION,
-  };
-}
-
-// ── A whole round ────────────────────────────────────────────────────────────
-
-/** One play in a round, as much of it as the formula needs. */
-export interface DzppRoundPlay {
-  userId: number;
-  /** The osu! pp for the play, or null when osu! reported none. */
-  pp: number | null;
-  /** challenge_scores.qualified as stored. */
-  qualified: boolean;
-  /** True when this player had an approved submission for the round. */
-  hadApprovedSubmission: boolean;
-  /** True when this player held a vote for the round at finalization time. */
-  hadVote: boolean;
-  /** The mod string as stored ('HDHR', 'NM', etc.) — used to compute hadModCompliance. */
-  mods: string;
-  /** The round's mod requirement ('HD', 'NM', etc.) — used to compute hadModCompliance. */
-  modRequirement: string;
-  /** The round's challenge requirement ('Full Combo', 'Best Accuracy', etc.) */
-  challengeRequirement: string;
-  /** The player's score value — used to find the Top #1 Score metric winner. */
-  score: number;
-  /** The player's accuracy (0-100) — used to find the Best Accuracy metric winner. */
-  accuracy: number;
-  /** The player's miss count — used to find the Lowest Miss Count metric winner. */
-  misses: number;
-}
-
-/** A frozen result with the player it belongs to. */
-export interface DzppRoundResult extends DzppBreakdown {
-  userId: number;
-}
-
-export interface DzppBeatmapResult extends DzppRoundResult {
-  submissionId: number;
-  voteRank: number;
-  score: number;
-  accuracy: number;
-  misses: number;
-  maxCombo: number;
-  beatmapMaxCombo: number;
-  mods: string;
-  osuScoreId: number | null;
-  modCompliancePoints: number;
-  requirementAchievementPoints: number;
-}
-
-/**
- * Scores every play in a round.
- *
- * THE CALLER SUPPLIES LEADERBOARD ORDER, and this function does not sort. listForRound in
- * repo/challengeScores.ts orders a round 'qualified DESC, <orderFor(requirement)>,
- * submitted_at ASC' — score descending normally, accuracy descending on a Best Accuracy
- * round, misses ascending on a Lowest Miss Count round — and that SQL is the only
- * implementation of the round's ordering in this project. Re-implementing it here would
- * make two orderings that can disagree, and the frozen points would then contradict the
- * leaderboard the players were actually shown. It is the same reason orderFor and orderHits
- * each say the server owns the ordering.
- *
- * Ties therefore never reach this function undecided: the requirement's own key breaks
- * them, then submitted_at, so the plays arrive in a settled sequence and are numbered
- * along it.
- *
- * NON-QUALIFYING PLAYS DO NOT CONSUME A PLACEMENT. They are numbered null and skipped,
- * because otherwise everybody behind one would be demoted for somebody else's failed
- * attempt. listForRound puts them last in any case, so the skip matters only if a future
- * caller hands them over interleaved.
- *
- * A player with no challenge_scores row is simply absent from the input and gets no result
- * — no row, rather than a zero row.
- */
-export function scoreRound(playsInLeaderboardOrder: readonly DzppRoundPlay[]): DzppRoundResult[] {
-  // The field factor counts QUALIFIED PLAYERS, not submissions, and it counts all of them
-  // regardless of country: the field is the field that played. The Algeria filter belongs
-  // to the ranking read, not to what happened in the round.
-  const qualifiedPlayers = playsInLeaderboardOrder.filter((play) => play.qualified).length;
-
-   const awardsByUser = qualificationAwards(playsInLeaderboardOrder);
-
-  let placed = 0;
-  return playsInLeaderboardOrder.map((play) => {
-    // FM (Free Mods): any combination of mods is allowed — always compliant.
-          const awards = awardsByUser.get(play.userId) ?? {
-        modCompliancePoints: 0,
-        requirementAchievementPoints: 0,
-      };
-
-    return {
-      userId: play.userId,
-      ...scoreOne({
-        pp: play.pp,
-        qualified: play.qualified,
-        placement: play.qualified ? ++placed : null,
-        qualifiedPlayers,
-        hadApprovedSubmission: play.hadApprovedSubmission,
-        hadVote: play.hadVote,
-        hadModCompliance: awards.modCompliancePoints > 0,
-        hadRequirementAchievement: awards.requirementAchievementPoints > 0,
-      }),
-    };
-  });
-}
-
-/**
- * Splits a mod string into acronyms, filtering ignored mods (e.g. 'CL').
- * Mirrors the logic in repo/challengeScores.ts splitMods — kept here so the pure
- * half of dzpp.ts has no import dependency on challengeScores.ts.
- *
- * NOTE: 'FM' (Free Mods) is handled BEFORE this function is called in scoreRound.
- * FM always grants mod compliance and never reaches the acronym comparison.
- */
-const IGNORED_MOD_ACRONYMS = ['CL'];
-function splitModAcronyms(mods: string): string[] {
-  const text = mods.trim().toUpperCase();
-  if (text === '' || text === 'NM') return [];
-  return (text.match(/.{1,2}/g) ?? []).filter((a) => !IGNORED_MOD_ACRONYMS.includes(a));
-}
-
-interface DzppQualificationAwards {
-  modCompliancePoints: number;
-  requirementAchievementPoints: number;
-}
-
-function qualificationAwards(
-  playsInLeaderboardOrder: readonly DzppRoundPlay[]
-): Map<number, DzppQualificationAwards> {
-  const challengeRequirement = playsInLeaderboardOrder[0]?.challengeRequirement ?? '';
-  const qualifiedPlays = playsInLeaderboardOrder.filter((p) => p.qualified);
-
-  let achievementWinnerIds: Set<number>;
-
-  if (challengeRequirement === 'Full Combo') {
-    achievementWinnerIds = new Set(qualifiedPlays.map((p) => p.userId));
-  } else if (challengeRequirement === 'Best Accuracy') {
-    const best = qualifiedPlays.reduce<number | null>(
-      (max, p) => (max === null || p.accuracy > max ? p.accuracy : max),
-      null
-    );
-    achievementWinnerIds = new Set(
-      best === null
-        ? []
-        : qualifiedPlays.filter((p) => p.accuracy === best).map((p) => p.userId)
-    );
-  } else if (challengeRequirement === 'Lowest Miss Count') {
-    const best = qualifiedPlays.reduce<number | null>(
-      (min, p) => (min === null || p.misses < min ? p.misses : min),
-      null
-    );
-    achievementWinnerIds = new Set(
-      best === null
-        ? []
-        : qualifiedPlays.filter((p) => p.misses === best).map((p) => p.userId)
-    );
-  } else {
-    const best = qualifiedPlays.reduce<number | null>(
-      (max, p) => (max === null || p.score > max ? p.score : max),
-      null
-    );
-    achievementWinnerIds = new Set(
-      best === null
-        ? []
-        : qualifiedPlays.filter((p) => p.score === best).map((p) => p.userId)
-    );
-  }
-
-  const awards = new Map<number, DzppQualificationAwards>();
-
-  for (const play of playsInLeaderboardOrder) {
-    const isFm = play.modRequirement.trim().toUpperCase() === 'FM';
-
-    let hadModCompliance: boolean;
-
-    if (isFm) {
-      hadModCompliance = true;
-    } else {
-      const requiredAcronyms = splitModAcronyms(play.modRequirement);
-      const playedAcronyms = splitModAcronyms(play.mods);
-
-      hadModCompliance =
-        requiredAcronyms.length === playedAcronyms.length &&
-        requiredAcronyms.every((a) => playedAcronyms.includes(a));
-    }
-
-    awards.set(play.userId, {
-      modCompliancePoints: hadModCompliance ? MOD_COMPLIANCE_POINTS : 0,
-      requirementAchievementPoints: achievementWinnerIds.has(play.userId)
-        ? REQUIREMENT_ACHIEVEMENT_POINTS
-        : 0,
-    });
-  }
-
-  return awards;
-}
-
-// ── Reading a stored challenge score ─────────────────────────────────────────
-
-/**
- * numeric comes back from node-postgres as a STRING, to avoid the silent precision loss of
- * a JS number — challenge_scores.accuracy is already read that way, and pp is no different.
- *
- * An empty or unparseable column reads as absent rather than as zero. Number('') is 0, so
- * trusting the conversion would quietly turn a broken read into a real zero-pp play, and
- * the difference between those two is exactly what the nullable column exists to record.
- */
-const asPp = (value: string | null): number | null => {
-  if (value === null || value.trim() === '') return null;
-  const pp = Number(value);
-  return Number.isFinite(pp) ? pp : null;
+export {
+  DZPP_FORMULA_VERSION,
+  CHALLENGE_SCORE_POINTS,
+  SUBMISSION_APPROVED_POINTS,
+  VOTE_POINTS,
+  MOD_COMPLIANCE_POINTS,
+  REQUIREMENT_ACHIEVEMENT_POINTS,
+  scoreOne,
+  scoreRound,
+  toRoundPlay,
+  asPp,
+  FIELD_FACTOR_TARGET,
+  PLACEMENT_TABLE,
+  fieldFactor,
+  basePlacementPoints,
+  placementPoints,
+  RANKING_COUNTRY,
+  SEASON_SIZE,
+  seasonBounds,
+  refuseFinalize,
+  refuseRecompute,
+  mergeBestBeatmapResults,
 };
-
-/**
- * A challenge_scores row as the formula wants it.
- *
- * Structural rather than an import of ChallengeScoreRow, so the pure half stays a function
- * of plain data and the two modules do not need each other to be testable.
- *
- * hadApprovedSubmission and hadVote are supplied by the caller (finalizeRound /
- * recomputeRound), which queries submissions and votes for the round before mapping.
- */
-export function toRoundPlay(
-  row: {
-  user_id: number;
-  pp: string | null;
-  qualified: boolean;
-  mods: string;
-  score: string;
-  accuracy: string;
-  misses: number;
-},
-  hadApprovedSubmission: boolean,
-  hadVote: boolean,
-  modRequirement: string,
-  challengeRequirement: string
-): DzppRoundPlay {
-  return {
-    userId: row.user_id,
-    pp: asPp(row.pp),
-    qualified: row.qualified,
-    hadApprovedSubmission,
-    hadVote,
-    mods: row.mods,
-    modRequirement,
-    challengeRequirement,
-    score: Number(row.score),
-    accuracy: Number(row.accuracy),
-    misses: row.misses,
-  };
-}
-
-function seasonNumberForRound(roundNumber: number): number {
-  return Math.max(1, Math.ceil(roundNumber / SEASON_SIZE));
-}
-
-function calculateRoundDzpRewards(
-  detailed: readonly DzppBeatmapResult[],
-  approvedSubmitters: Set<number>,
-  voters: Set<number>
-): DzpPlayerReward[] {
-  return calculateDzpRewards({
-    maps: detailed.map((result) => ({
-      userId: result.userId,
-      challengeScoreExists: true,
-      qualificationPoints: result.qualificationPoints,
-      placementPoints: result.placementPoints,
-    })),
-    approvedSubmitterIds: approvedSubmitters,
-    voterIds: voters,
-  });
-}
+export { qualificationAwards } from '../domain/dzpp/qualification.js';
+export { toApiRankingEntry, toApiPlayerDzppRound } from '../domain/dzpp/rankings.js';
+export type {
+  DzppScoreInput,
+  DzppBreakdown,
+  DzppRoundPlay,
+  DzppRoundResult,
+  DzppBeatmapResult,
+  CurrentSeason,
+  RankingMeta,
+  RankingRow,
+  RankingScope,
+  PlayerRoundMapRow,
+  PlayerRoundRow,
+  FinalizeFailure,
+  FinalizeOutcome,
+  RecomputeFailure,
+  RecomputeOutcome,
+  RecomputeSummary,
+};
 
 async function insertInitialDzpRewards(
   client: PoolClient,
@@ -656,61 +220,6 @@ async function insertDzpAdjustments(
 
 // ── Freezing a round ─────────────────────────────────────────────────────────
 
-export type FinalizeRefusal = 'not-ended' | 'already-finalized';
-
-/** 'gone' is not part of the rule — only the transaction can find the row missing. */
-export type FinalizeFailure = FinalizeRefusal | 'gone';
-
-/**
- * Whether a round's DZPP may be frozen, and if not, which rule refused.
- *
- * PURE, and it takes the round rather than reading it, for the same reason refuseSkipVoting
- * does: the rule is testable without a database, and the transaction below supplies the
- * facts it has just locked.
- *
- * ORDER MATTERS. The phase is checked first because "this round has not ended" is the more
- * fundamental answer — reporting an unended round as already-scored would send an
- * administrator looking for the wrong problem.
- */
-export function refuseFinalize(round: {
-  phase: string;
-  dzpp_finalized_at: Date | null;
-}): FinalizeRefusal | null {
-  if (round.phase !== 'ended') return 'not-ended';
-  if (round.dzpp_finalized_at !== null) return 'already-finalized';
-  return null;
-}
-
-export type FinalizeOutcome =
-  | { ok: true; results: DzppRoundResult[] }
-  | { ok: false; reason: FinalizeFailure };
-
-/**
- * Freezes a round's DZPP, in one transaction. Safe to call more than once.
- *
- * IDEMPOTENT BY THE LATCH, not by the insert. The round is locked FOR UPDATE, and a round
- * whose dzpp_finalized_at is already set is refused before anything is written — so a second
- * call cannot award a second set of points however it arrives. The INSERT is deliberately
- * plain rather than ON CONFLICT DO NOTHING: with the latch doing the work, a primary-key
- * collision would mean the latch had failed, and that should be loud.
- *
- * A ROUND WITH NO SCORES FINALIZES TO NOTHING AND STILL STAMPS THE LATCH. That happens for a
- * round ended from the submission phase, and for one closed through skipEmptyVoting, neither
- * of which ever had a challenge. Zero rows is the correct answer and the round is then closed
- * for good, rather than left looking unfinished forever.
- *
- * THE PLAYS ARE READ THROUGH listForRound, ON THE POOL, OUTSIDE THE LOCK. Two reasons that
- * is right rather than merely convenient. First, listForRound is the single implementation of
- * the round's ordering — 'qualified DESC, orderFor(requirement), submitted_at ASC' — and
- * re-issuing that SELECT here with the transaction client would make a second copy that can
- * drift, which is the failure orderFor and orderHits each warn about. Second, no write to
- * this round's challenge_scores is possible any more: POST /api/challenge/scores requires
- * phase === 'challenge', and POST /api/admin/challenge/scores goes through findCurrent(),
- * which never returns an ended round. The set being scored cannot move under the read.
- *
- * The same reasoning applies to the completion sub-award queries: submissions and votes for
- * an ended round cannot change, so reading them on the pool outside the lock is safe.
- */
 export async function finalizeRound(roundId: number): Promise<FinalizeOutcome> {
   const client = await pool.connect();
   try {
@@ -814,39 +323,6 @@ export async function freezeEndedRound(roundId: number): Promise<void> {
     );
   }
 }
-
-// ── The cumulative ranking ───────────────────────────────────────────────────
-//
-// WHO APPEARS: Algeria, and only Algeria. Approved decision 4 — the roadmap says "No other
-// country should appear in the DZPP ranking" in so many words, so this filters on DZ itself
-// rather than following allowed_countries. It is DZ-only either way today, and this constant
-// is the one-line change if the policy should later track the allowlist.
-//
-// FROZEN ROWS ARE WRITTEN FOR EVERYONE WHO PLAYED, whatever their country. The filter lives
-// here, on the read, so that field_size and placement describe the field that actually
-// played, and so changing who is displayed never needs a recompute.
-
-/** The only country in the DZ Performance Rankings. */
-export const RANKING_COUNTRY = 'DZ';
-
-// ── Season definition ────────────────────────────────────────────────────────
-//
-// A season covers exactly SEASON_SIZE consecutive rounds. Season 1 = rounds 1–3,
-// Season 2 = rounds 4–6, and so on.
-//
-// CURRENT_SEASON IS THE SINGLE SERVER-SIDE SOURCE OF TRUTH. The frontend has a
-// matching constant in RankingsPage.tsx. Update both together when a new season
-// starts — they stay in sync by convention, not by API. If that becomes fragile,
-// move the value into site_settings (one column, no migration beyond adding it)
-// and have the route fetch it; for now a constant is fine.
-export const SEASON_SIZE = 3;
-export interface CurrentSeason {
-  number: number;
-  label: string;
-  first: number;
-  last: number;
-}
-
 export async function currentSeason(): Promise<CurrentSeason> {
   const { rows } = await pool.query<{ max_round_number: number | null }>(
     'SELECT MAX(round_number)::int AS max_round_number FROM rounds'
@@ -864,130 +340,6 @@ export async function currentSeason(): Promise<CurrentSeason> {
   };
 }
 /** The inclusive round_number range for a given season number. */
-export function seasonBounds(seasonNumber: number): { first: number; last: number } {
-  const first = (seasonNumber - 1) * SEASON_SIZE + 1;
-  const last  =  seasonNumber      * SEASON_SIZE;
-  return { first, last };
-}
-
-/**
- * The three ranking scopes the page exposes.
- *
- * 'all-time'  — every finalized round, no filter.
- * 'yearly'    — rounds in the given calendar year (r.year).
- * 'seasonal'  — rounds in CURRENT_SEASON only, by round_number range.
- */
-export type RankingScope = 'all-time' | 'yearly' | 'seasonal';
-
-// One copy of the country rule, composed into every query below. country_code is char(2) and
-// Postgres blank-pads char, so reads trim — the same sentence isEligible and toApiUser use.
-const RANKED_JOINS = `
-    FROM round_dzpp d
-    JOIN rounds r ON r.id = d.round_id
-    JOIN users  u ON u.id = d.user_id
-   WHERE upper(trim(u.country_code)) = $1`;
-
-// Scope filters — appended after RANKED_JOINS. Each uses positional parameters starting at $2.
-//
-// YEAR_FILTER    ($2 = year | null)  — null means all-time.
-// SEASON_FILTER  ($2, $3 = first, last round_number) — current season only.
-const YEAR_FILTER   = `\n     AND ($2::int IS NULL OR r.year = $2)`;
-const SEASON_FILTER = `\n     AND r.round_number BETWEEN $2 AND $3`;
-
-export interface RankingRow {
-  user_id: number;
-  rank: number;
-  dzpp: number;
-  rounds_played: number;
-  first_places: number;
-  best_placement: number | null;
-  /** bigint: pg hands these back as strings. */
-  osu_id: string;
-  username: string;
-  avatar_url: string | null;
-  country_code: string;
-}
-
-export interface PlayerRoundMapRow {
-  round_id: number;
-  submission_id: number;
-  vote_rank: number;
-
-  title: string;
-  artist: string;
-  mapper: string;
-  difficulty_name: string;
-  difficulty_id: string;
-  beatmapset_id: string;
-  cover_url: string | null;
-
-  mod_requirement: string;
-  challenge_requirement: string;
-
-  score: string;
-  accuracy: string;
-  misses: number;
-  max_combo: number;
-  beatmap_max_combo: number;
-  mods: string;
-  osu_score_id: string | null;
-
-  performance_value: string | null;
-  completion_points: string;
-  qualification_points: string;
-  mod_compliance_points: string | null;
-  requirement_achievement_points: string | null;
-  placement_points: string;
-  placement: number | null;
-  qualified: boolean;
-  field_size: number;
-  final_dzpp: number;
-  counted: boolean;
-}
-
-export interface PlayerRoundRow {
-  round_id: number;
-  round_number: number;
-  month: string;
-  year: number;
-  performance_value: string | null;
-  completion_points: string;
-  qualification_points: string;
-  placement_points: string;
-  placement: number | null;
-  qualified: boolean;
-  field_size: number;
-  final_dzpp: number;
-  maps?: PlayerRoundMapRow[];
-}
-
-/** Everything the page needs about the table other than the page itself. */
-export interface RankingMeta {
-  /** Players in the whole filtered table, for the pager. */
-  total: number;
-  /** Seasons that hold DZPP, newest first — the year selector's options. */
-  years: number[];
-  currentSeason: CurrentSeason | null;
-}
-
-/**
- * The pager total and the season list, in ONE query.
- *
- * They were two, and before that the total was awaited BEFORE the page — two serial round
- * trips for one screen. They combine cleanly because they read the same joins and differ only
- * in their filter, which FILTER expresses per aggregate: the count honours the requested
- * season, the year list deliberately does not, because the selector has to keep offering the
- * other seasons while one of them is showing.
- *
- * NOT count(*) OVER () on the page query, which was the other tempting shortcut: a window
- * count returns nothing when the requested page is past the end, and "page 9 of a 2-page
- * table" still has to report the real total. This is an aggregate with no GROUP BY, so it
- * always returns exactly one row whatever the filter matches.
- *
- * For 'seasonal', the total counts only players who have a row in the current season's
- * round range. The year list is always the full set so the yearly selector stays populated
- * even while the seasonal tab is showing.
- */
 export async function rankingMeta(
   scope: RankingScope,
   year: number | null
@@ -1201,159 +553,6 @@ return rows.map((row) => ({
   maps: mapsByRound.get(row.round_id) ?? [],
 }));
 }
-/** Maps a row to the ApiRankingEntry DTO declared in src/api/client.ts. */
-export function toApiRankingEntry(row: RankingRow) {
-  return {
-    rank: row.rank,
-    userId: row.user_id,
-    osuId: Number(row.osu_id),
-    username: row.username,
-    avatarUrl: row.avatar_url ?? '',
-    country: row.country_code.trim(),
-    dzpp: row.dzpp,
-    roundsPlayed: row.rounds_played,
-    firstPlaces: row.first_places,
-    /** Null for a player who has never qualified in any counted round. */
-    bestPlacement: row.best_placement,
-  };
-}
-
-/** Maps a row to the ApiPlayerDzppRound DTO declared in src/api/client.ts. */
-export function toApiPlayerDzppRound(row: PlayerRoundRow) {
-  return {
-    roundId: row.round_id,
-    roundNumber: row.round_number,
-    month: row.month,
-    year: row.year,
-
-    performanceValue: asPp(row.performance_value),
-    completionPoints: Number(row.completion_points),
-    qualificationPoints: Number(row.qualification_points),
-    placementPoints: Number(row.placement_points),
-    placement: row.placement,
-    qualified: row.qualified,
-    fieldSize: row.field_size,
-    finalDzpp: row.final_dzpp,
-
-    maps: (row.maps ?? []).map((map) => ({
-      submissionId: map.submission_id,
-      voteRank: map.vote_rank,
-
-      title: map.title,
-      artist: map.artist,
-      mapper: map.mapper,
-      difficultyName: map.difficulty_name,
-      difficultyId: Number(map.difficulty_id),
-      beatmapsetId: Number(map.beatmapset_id),
-      coverUrl: map.cover_url ?? '',
-
-      modRequirement: map.mod_requirement,
-      challengeRequirement: map.challenge_requirement,
-
-      score: Number(map.score),
-      accuracy: Number(map.accuracy),
-      misses: map.misses,
-      maxCombo: map.max_combo,
-      beatmapMaxCombo: map.beatmap_max_combo,
-      mods: map.mods,
-      osuScoreId: map.osu_score_id === null ? null : Number(map.osu_score_id),
-
-      performanceValue: asPp(map.performance_value),
-      completionPoints: Number(map.completion_points),
-qualificationPoints: Number(map.qualification_points),
-modCompliancePoints:
-  map.mod_compliance_points === null ? null : Number(map.mod_compliance_points),
-requirementAchievementPoints:
-  map.requirement_achievement_points === null
-    ? null
-    : Number(map.requirement_achievement_points),
-placementPoints: Number(map.placement_points),
-      placement: map.placement,
-      qualified: map.qualified,
-      fieldSize: map.field_size,
-      finalDzpp: map.final_dzpp,
-      counted: map.counted,
-    })),
-  };
-}
-
-// ── Recomputing a frozen round (Phase 7) ─────────────────────────────────────
-//
-// THE ONLY SANCTIONED WAY A FROZEN ROUND EVER CHANGES. Freezing is what keeps roadmap rule 7
-// honest — a constant retuned in month five must not silently rewrite months one to four — and
-// its one cost is that a round sometimes genuinely has to be scored again. This is that, made
-// explicit, audited, and scoped to one round at a time.
-//
-// ONE ROUND, NEVER A SWEEP. Every statement below is keyed on the round id, so a recompute
-// cannot reach a round the caller did not name. There is deliberately no all-rounds form: a
-// single call that rewrote every historical round would be one mistake away from reshaping the
-// whole leaderboard, and no audit row can undo that.
-
-export type RecomputeRefusal = 'not-ended';
-
-/** 'gone' is not part of the rule — only the transaction can find the row missing. */
-export type RecomputeFailure = RecomputeRefusal | 'gone';
-
-/**
- * Whether a round's DZPP may be recomputed, and if not, which rule refused.
- *
- * DELIBERATELY NOT refuseFinalize. The two disagree on exactly one input, which is why both
- * exist: finalization refuses a round that has already been scored, because scoring it twice
- * would award the points twice, and a recompute is the sanctioned way to score it again — so
- * the latch must not refuse it here.
- *
- * It also accepts a round the latch never stamped, which is the round that ended before the
- * finalization hook existed. One action covers both, because two endpoints doing nearly the
- * same thing is how they drift apart.
- *
- * The one rule left is the phase: nothing is rescored while it can still change on its own.
- */
-export function refuseRecompute(round: {
-  phase: string;
-  dzpp_finalized_at: Date | null;
-}): RecomputeRefusal | null {
-  return round.phase === 'ended' ? null : 'not-ended';
-}
-
-/** What a recompute changed, for the response and the audit row. */
-export interface RecomputeSummary {
-  roundId: number;
-  previousRows: number;
-  newRows: number;
-  previousTotal: number;
-  newTotal: number;
-  /** Null when the round had never been scored — a missed finalization rather than a rescore. */
-  previousFormulaVersion: number | null;
-  newFormulaVersion: number;
-  /** True when this round had no frozen rows at all before the call. */
-  firstTime: boolean;
-}
-
-export type RecomputeOutcome =
-  | { ok: true; summary: RecomputeSummary; results: DzppRoundResult[] }
-  | { ok: false; reason: RecomputeFailure };
-
-/**
- * Rescores one round and records what changed, in one transaction.
- *
- * ATOMIC BY CONSTRUCTION. The delete, the inserts, the audit row and the latch all land
- * together or not at all, so there is no window in which a round holds no DZPP, and no way for
- * the rewrite to happen without its record.
- *
- * SCOPED BY THE ROUND ID, everywhere. The DELETE names round_id and nothing else, the inserts
- * carry it, the audit row carries it, and the lock is on that round's row — so an unrelated
- * historical round cannot be touched even by accident.
- *
- * WHAT IT DOES NOT DO is re-read osu!. It rescores the plays as they are stored, through the
- * same listForRound ordering and the same scoreRound engine that froze them the first time, so
- * a recompute reflects a changed CONSTANT or a fixed bug and never a changed play. A round whose
- * scores lack pp will still lack it afterwards; recovering that needs the score re-imported
- * first, which is the admin manual-entry path and not this one.
- *
- * dzpp_finalized_at is COALESCEd rather than overwritten, so the moment a round was FIRST frozen
- * survives. Every later rescore has its own timestamped audit row, which is strictly more
- * information than moving the latch would leave.
- */
 export async function recomputeRound(
   roundId: number,
   reason: string,
@@ -1692,35 +891,6 @@ export async function getLivePlayerDzpp(roundId: number, userId: number): Promis
  * Selects the single map result that becomes the player's authoritative round_dzpp row.
  *
  * Highest final DZPP wins. Ties use the earlier vote-ranked challenge beatmap.
- */
-export function mergeBestBeatmapResults(
-  results: readonly DzppBeatmapResult[]
-): DzppBeatmapResult[] {
-  const best = new Map<number, DzppBeatmapResult>();
-
-  for (const result of results) {
-    const existing = best.get(result.userId);
-
-    if (
-      existing === undefined ||
-      result.finalDzpp > existing.finalDzpp ||
-      (
-        result.finalDzpp === existing.finalDzpp &&
-        result.voteRank < existing.voteRank
-      )
-    ) {
-      best.set(result.userId, result);
-    }
-  }
-
-  return [...best.values()];
-}
-
-/**
- * Existing public scoring helper.
- *
- * Kept as a wrapper so existing callers and tests still receive exactly one
- * merged result per player.
  */
 export async function scoreAllBeatmaps(
   roundId: number,
