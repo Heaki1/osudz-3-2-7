@@ -30,8 +30,8 @@ Thumbs.db
 /docs/
 /PROJECT STATE.MD
 
-# Player-uploaded profile banners
-server/uploads/profile-banners/
+# Runtime uploads (player/replay files are never source-controlled)
+server/uploads/
 # Backup files
 *.bak
 *.backup
