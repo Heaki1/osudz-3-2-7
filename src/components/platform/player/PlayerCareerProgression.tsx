@@ -1,6 +1,6 @@
 import React from 'react';
 import { Award, CheckCircle2, Crown, Medal, Swords, Target, Trophy, Vote } from 'lucide-react';
-import type { ApiPlayerDzppRound, ApiPlayerProfile } from '../../../api/client';
+import type { ApiPlayerDzppRound, ApiPlayerProfile } from '../../../types/player';
 
 function fmt(value: number | null | undefined): string {
   return value == null ? '—' : value.toLocaleString();

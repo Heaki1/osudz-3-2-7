@@ -11,7 +11,8 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { api, type ApiPlayerProfile } from '../../../api/client';
+import { api } from '../../../api/client';
+import type { ApiPlayerProfile } from '../../../types/player';
 import {
   ARTWORK_ASPECT_RATIO,
   ShopError,

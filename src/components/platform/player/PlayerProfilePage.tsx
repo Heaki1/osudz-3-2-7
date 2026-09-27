@@ -39,10 +39,9 @@ import {
   api,
   type ApiChallengeBeatmap,
   type ApiChallengeCollectionItem,
-  type ApiPlayerDzppRound,
-  type ApiPlayerProfile,
   type ApiPlayerShopItem,
 } from '../../../api/client';
+import type { ApiPlayerDzppRound, ApiPlayerProfile } from '../../../types/player';
 import { averagePlacement, monthLabel } from '../../../lib/rankings';
 import type { ShopProfile } from '../shop/shop.types';
 import { PlayerAvatar } from './PlayerAvatar';

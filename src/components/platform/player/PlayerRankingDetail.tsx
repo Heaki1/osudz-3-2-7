@@ -13,7 +13,8 @@ import {
 } from 'lucide-react';
 import { TitleRenderer } from '../TitleRenderer';
 import { PlayerAvatar } from './PlayerAvatar';
-import { api, ApiPlayerDzppMap, ApiPlayerDzppRound, ApiRankingEntry } from '../../../api/client';
+import { api, type ApiRankingEntry } from '../../../api/client';
+import type { ApiPlayerDzppMap, ApiPlayerDzppRound } from '../../../types/player';
 import { averagePlacement, monthLabel } from '../../../lib/rankings';
 import type { ShopProfile } from '../shop/shop.types';
 

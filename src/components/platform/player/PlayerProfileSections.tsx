@@ -16,7 +16,8 @@ import {
   Trophy,
 } from 'lucide-react';
 import { BeatmapCard } from '../../beatmap/BeatmapCard';
-import type { ApiChallengeBeatmap, ApiChallengeCollectionItem, ApiPlayerDzppMap, ApiPlayerDzppRound, ApiPlayerShopItem } from '../../../api/client';
+import type { ApiChallengeBeatmap, ApiChallengeCollectionItem, ApiPlayerShopItem } from '../../../api/client';
+import type { ApiPlayerDzppMap, ApiPlayerDzppRound } from '../../../types/player';
 import type { Beatmap } from '../../../types';
 import type { ItemCategory } from '../shop/shop.types';
 import { TitleRenderer } from '../TitleRenderer';
