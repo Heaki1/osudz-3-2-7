@@ -29,7 +29,7 @@ import type { ShopProfile } from '../shop/shop.types';
 // from GET /api/rankings/:userId — nothing is recomputed against the formula, because the
 // stored row IS the answer and a second opinion in the client could disagree with it.
 //
-// The history read is its own, rather than being handed down: it is wanted only when a row is
+// The history read is its own, rather than being handed down: it is quest only when a row is
 // opened, and fetching it here keeps its loading and error states beside what they describe.
 
 interface PlayerRankingDetailProps {

@@ -45,6 +45,7 @@ import type { ApiPlayerDzppRound, ApiPlayerProfile } from '../../../types/player
 import { averagePlacement, monthLabel } from '../../../lib/rankings';
 import type { ShopProfile } from '../shop/shop.types';
 import { PlayerAvatar } from './PlayerAvatar';
+import type { ApiGuildProfile } from '../../../api/guild';
 import { TitleRenderer } from '../TitleRenderer';
 import { PlayerCareerProgression } from './PlayerCareerProgression';
 import {
@@ -307,7 +308,7 @@ return (
 
               <div className="mt-4 rounded-sm border border-[#292d45] bg-[#0d1220] px-3 py-2.5">
                 <div className="grid grid-cols-2 gap-3 text-[9px] sm:grid-cols-4">
-                  <div><p className="font-mono uppercase text-slate-600">Recommended</p><p className="mt-0.5 font-bold text-slate-300">1500 × 500 px</p></div>
+                  <div><p className="font-mono uppercase text-slate-600">Recommended</p><p className="mt-0.5 font-bold text-slate-300">1500 Ã— 500 px</p></div>
                   <div><p className="font-mono uppercase text-slate-600">Ratio</p><p className="mt-0.5 font-bold text-slate-300">3:1</p></div>
                   <div><p className="font-mono uppercase text-slate-600">Maximum</p><p className="mt-0.5 font-bold text-slate-300">5 MB</p></div>
                   <div><p className="font-mono uppercase text-slate-600">Formats</p><p className="mt-0.5 font-bold text-slate-300">JPG / PNG / WebP / GIF</p></div>
@@ -434,6 +435,7 @@ export default function PlayerProfilePage({ username, onBack }: PlayerProfilePag
   const [giftBusy, setGiftBusy] = useState(false);
   const [giftError, setGiftError] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [guildProfile, setGuildProfile] = useState<ApiGuildProfile | null>(null);
   const [bannerUploading, setBannerUploading] = useState(false);
   const [bannerError, setBannerError] = useState<string | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
@@ -472,6 +474,7 @@ export default function PlayerProfilePage({ username, onBack }: PlayerProfilePag
     setSelectedBadgeKeys([]);
     setActivePreviewBadgeKey(null);
     setPreviewPlaying(false);
+    setGuildProfile(null);
 
     void api.players.profile(username).then((result) => {
       if (!live) return;
@@ -481,6 +484,13 @@ export default function PlayerProfilePage({ username, onBack }: PlayerProfilePag
       }
       setProfile(result.data);
       setProfileState('ready');
+    });
+
+    void api.auth.me().then((result) => {
+      if (!live || !result.ok || !result.data || result.data.username.toLowerCase() !== username.toLowerCase()) return;
+      void api.guild.profile().then((guildResult) => {
+        if (live && guildResult.ok) setGuildProfile(guildResult.data);
+      });
     });
 
     return () => {
@@ -866,6 +876,29 @@ export default function PlayerProfilePage({ username, onBack }: PlayerProfilePag
             onPreviewVolumeChange={handlePreviewVolumeChange}
           />
 
+          {guildProfile && (
+            <section className="mb-4 border border-amber-300/15 bg-[#0d1220] p-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <img src={guildProfile.badgeAsset} alt={guildProfile.profile.guild_rank + " Guild badge"} className="h-12 w-12 object-contain" onError={(event) => { const image = event.currentTarget; if (!image.src.endsWith(".png")) image.src = guildProfile.badgeAsset.replace(/\.svg$/i, ".png"); }} />
+                <div>
+                  <div className="text-[8px] font-black uppercase tracking-[.24em] text-amber-200/45">Adventurer Guild</div>
+                  <div className="font-serif text-xl font-black text-amber-100">{guildProfile.profile.guild_rank}</div>
+                </div>
+                <div className="ml-auto text-right">
+                  <div className="text-[8px] font-black uppercase tracking-wider text-slate-600">Guild EXP</div>
+                  <div className="font-mono text-sm font-black text-amber-200">{guildProfile.profile.guild_exp.toLocaleString()}</div>
+                </div>
+              </div>
+              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-900">
+                <div className="h-full bg-amber-300" style={{ width: (guildProfile.progressPercent ?? 0) + '%' }} />
+              </div>
+              <div className="mt-1 flex justify-between text-[8px] font-black uppercase tracking-wider text-slate-600">
+                <span>{guildProfile.profile.successful_hunts} Hunts taken down</span>
+                <span>{guildProfile.nextRank ? 'Next: ' + guildProfile.nextRank : 'Guild progression rules pending'}</span>
+              </div>
+            </section>
+          )}
+
           <div className="mb-4 flex gap-3 overflow-x-auto xl:hidden">
             {selectedBadges.map((win) => {
               const key = challengeBadgeKey(win);
@@ -983,4 +1016,3 @@ export default function PlayerProfilePage({ username, onBack }: PlayerProfilePag
     </main>
   );
 }
-

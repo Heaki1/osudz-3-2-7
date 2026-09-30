@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getLevelRush, getMappingStats, getPlayerProgress, getPlayerStreak, listActivity, comparePlayers, getLatestRoundRecap } from '../repos/platform.js';
+import { getLevelRush, getMappingStats, getPlayerProgress, getPlayerStreak, listActivity, comparePlayers, getLatestRoundRecap, getPlayerCompareExtras } from '../repos/platform.js';
 import { fetchPublicUser, fetchPublicUserBestScores } from '../services/osu.js';
 
 const router = Router();
@@ -72,6 +72,16 @@ router.get('/compare', async (req, res) => {
 
   const osuA = osuAResult.value;
   const osuB = osuBResult.value;
+  const platformRows = platformResult.value;
+  const platformByName = new Map(platformRows.map((player: any) => [player.username.toLowerCase(), player]));
+  const localA = platformByName.get(osuA.username.toLowerCase());
+  const localB = platformByName.get(osuB.username.toLowerCase());
+  const extrasResults = await Promise.allSettled([
+    localA ? getPlayerCompareExtras(Number(localA.user_id)) : Promise.resolve(null),
+    localB ? getPlayerCompareExtras(Number(localB.user_id)) : Promise.resolve(null),
+  ]);
+  const extraA = extrasResults[0].status === 'fulfilled' ? extrasResults[0].value : null;
+  const extraB = extrasResults[1].status === 'fulfilled' ? extrasResults[1].value : null;
   const bestResults = await Promise.allSettled([
     fetchPublicUserBestScores(osuA.id),
     fetchPublicUserBestScores(osuB.id),
@@ -109,7 +119,6 @@ router.get('/compare', async (req, res) => {
       replaysWatched: u.statistics?.replays_watched_by_others ?? null,
       best,
     });
-    const platformByName = new Map(platformResult.value.map((player) => [player.username.toLowerCase(), player]));
     const platform = [osuA, osuB].map((osuPlayer) => platformByName.get(osuPlayer.username.toLowerCase()) ?? {
       user_id: 0,
       username: osuPlayer.username,
@@ -123,7 +132,12 @@ router.get('/compare', async (req, res) => {
       registered: false,
     });
     const registeredPlatform = platform.map((player) => player.registered === false ? player : { ...player, registered: true });
-    res.json({ platform: registeredPlatform, osu: [shapeOsu(osuA, bestA), shapeOsu(osuB, bestB)], ...(warnings.length > 0 ? { warnings } : {}) });
+    const extras = [extraA, extraB];
+    res.json({
+      platform: registeredPlatform.map((player, index) => ({ ...player, extras: extras[index] })),
+      osu: [shapeOsu(osuA, bestA), shapeOsu(osuB, bestB)],
+      ...(warnings.length > 0 ? { warnings } : {}),
+    });
   } catch (err) {
     console.error('[platform] comparison response failed:', err instanceof Error ? err.message : err);
     res.status(500).json({ error: 'Player comparison unavailable' });

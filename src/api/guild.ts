@@ -62,6 +62,14 @@ export const guildApi = {
   onboarding: (adventurerName: string, kingdom: string, path: 'IRON' | 'EXAM') => send<Record<string, unknown>>('POST', '/guild/onboarding', { adventurerName, kingdom, path }),
   travel: (kingdom: string) => send<Record<string, unknown>>('POST', '/guild/travel', { kingdom }),
   kingdom: (kingdom: string) => get<Record<string, unknown>>('/guild/kingdom/' + kingdom),
+  war: () => get<any>('/guild/war'),
+  submitTrump: (cycleId: string, body: Record<string, unknown>) => send<any>('POST', '/guild/war/' + cycleId + '/trump', body),
+  useWarSummons: (cycleId: string) => send<any>('POST', '/guild/war/' + cycleId + '/summons'),
+  warSummons: (cycleId: string) => get<any>('/guild/war/' + cycleId + '/summons'),
+  party: () => get<any>('/guild/party'),
+  createParty: (name: string) => send<any>('POST', '/guild/parties', { name }),
+  joinParty: (partyId: string) => send<any>('POST', '/guild/parties/' + partyId + '/join'),
+  acceptPartyQuest: (partyId: string, templateId: string) => send<any>('POST', '/guild/parties/' + partyId + '/quests', { templateId }),
 };
 
 export type { ApiResult };

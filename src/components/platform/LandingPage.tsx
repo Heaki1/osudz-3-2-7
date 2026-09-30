@@ -56,7 +56,7 @@ const PHASES: Phase[] = [
 
 const PHASE4 = [
   {
-    emoji: "🎮", title: "Eligibility Rules",
+    emoji: "ðŸŽ®", title: "Eligibility Rules",
     bullets: [
       "Country eligibility — Algeria flag required.",
       "Exceptions may occur for some users.",
@@ -64,7 +64,7 @@ const PHASE4 = [
     ],
   },
   {
-    emoji: "📜", title: "Submission Rules",
+    emoji: "ðŸ“œ", title: "Submission Rules",
     bullets: [
       "Submitted beatmap must have a leaderboard.",
       "Submissions can be approved or rejected by admins.",
@@ -73,7 +73,7 @@ const PHASE4 = [
     ],
   },
   {
-    emoji: "📅", title: "Voting Rules",
+    emoji: "ðŸ“…", title: "Voting Rules",
     bullets: [
       "One vote per player per round.",
       "Votes can be changed before the voting phase closes.",
@@ -389,6 +389,7 @@ useEffect(() => {
         .db-phase4  { grid-template-columns: repeat(4, 1fr); }
         .db-edges   { grid-template-columns: repeat(3, 1fr); }
         .db-archive-row { grid-template-columns: 0.7fr 2fr 1.3fr 0.8fr; }
+        .db-guild-promo { grid-template-columns: auto 1fr auto; }
 
         @media (max-width: 1100px) {
           .db-stats  { grid-template-columns: repeat(3, 1fr); }
@@ -402,6 +403,9 @@ useEffect(() => {
           .db-phases { grid-template-columns: 1fr; }
           .db-phase4 { grid-template-columns: 1fr; }
           .db-edges  { grid-template-columns: 1fr; }
+          .db-guild-promo { grid-template-columns: 1fr; text-align: center; }
+          .db-guild-promo > img { margin: 0 auto; }
+          .db-guild-promo > a { justify-self: center; }
           .db-archive-row { grid-template-columns: 0.6fr 2fr 0.8fr; }
           .db-archive-row > :nth-child(3) { display: none; }
         }
@@ -496,7 +500,7 @@ useEffect(() => {
         }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "5px" }}>
-              <span style={{ fontSize: "22px", lineHeight: 1 }}>🎵</span>
+              <span style={{ fontSize: "22px", lineHeight: 1 }}>ðŸŽµ</span>
               <h1 style={{ margin: 0, fontSize: "28px", fontWeight: 900, letterSpacing: "-0.5px", lineHeight: 1 }}>
                 osu!<span style={{ color: "#ffd700" }}>dz</span>
               </h1>
@@ -550,6 +554,40 @@ useEffect(() => {
     />
   ))}
 </div>
+
+        {/* ── Adventurer Guild ── */}
+        <section className="db-guild-promo" style={{
+          display: "grid", gridTemplateColumns: "auto 1fr auto", gap: "18px",
+          alignItems: "center", marginBottom: "24px", padding: "18px 20px",
+          background: "linear-gradient(135deg, rgba(65,38,17,.78), rgba(17,11,8,.78))",
+          border: "1px solid rgba(226,194,122,.28)", borderLeft: "3px solid #d6ad57",
+          borderRadius: "8px", boxShadow: "0 14px 32px rgba(0,0,0,.22)",
+        }}>
+          <img src="/guild/guild-icon.png" alt="The DZ Guild" style={{
+            width: "72px", height: "72px", objectFit: "contain", padding: "5px",
+            borderRadius: "50%", background: "rgba(0,0,0,.24)",
+            border: "1px solid rgba(226,194,122,.35)",
+          }} />
+          <div>
+            <div style={{ fontSize: "10px", color: "#d9ba73", fontFamily: '"JetBrains Mono", monospace', fontWeight: 800, letterSpacing: ".18em", textTransform: "uppercase" }}>
+              THE DZ GUILD
+            </div>
+            <div style={{ marginTop: "4px", fontSize: "21px", fontWeight: 900, color: "#f3e0b3" }}>
+              Your Adventurer Record starts here.
+            </div>
+            <div style={{ marginTop: "5px", fontSize: "11px", color: "rgba(255,255,255,.52)", lineHeight: 1.6 }}>
+              Build Guild EXP, advance through eight ranks, take Placement Exams, and compete in verified Quest Hunts for DZP rewards.
+            </div>
+          </div>
+          <a href="/guild" style={{
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            padding: "10px 14px", color: "#241508", background: "linear-gradient(180deg,#e5c77f,#a97835)",
+            border: "1px solid #8c5a24", textDecoration: "none", fontSize: "9px",
+            fontWeight: 900, letterSpacing: ".12em", textTransform: "uppercase", whiteSpace: "nowrap",
+          }}>
+            Enter Guild →
+          </a>
+        </section>
 
         {/* ── Take Actions + About ── */}
         <div className="db-2col" style={{ display: "grid", gap: "14px", marginBottom: "24px" }}>
@@ -611,7 +649,7 @@ useEffect(() => {
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "15px" }}>
               <span style={{ color: "#a78bfa", fontFamily: '"JetBrains Mono", monospace', fontSize: "13px", fontWeight: 800, letterSpacing: "0.06em" }}>
-                ◆ ABOUT osu!dzpp
+                ╗† ABOUT osu!dzpp
               </span>
               <span style={{
                 background: "#a78bfa", color: "white", borderRadius: "3px",
@@ -924,7 +962,7 @@ useEffect(() => {
               </div>
             ) : archiveRounds.length === 0 ? (
               <div style={{ padding: "36px 20px", textAlign: "center" }}>
-                <div style={{ fontSize: "28px", marginBottom: "10px" }}>🏆</div>
+                <div style={{ fontSize: "28px", marginBottom: "10px" }}>ðŸ†</div>
                 <div style={{ fontSize: "13px", fontWeight: 700, color: "rgba(255,255,255,0.5)", marginBottom: "6px" }}>
                   No completed rounds yet
                 </div>

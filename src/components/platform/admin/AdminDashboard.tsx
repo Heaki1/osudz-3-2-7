@@ -16,6 +16,7 @@ import { BeatmapRulesTab, ChallengeTab } from './AdminSiteSettings';
 import { UsersTab } from './AdminUsersTab';
 import { ShopTab } from './AdminShopTab';
 import { DzppRecomputePanel } from './AdminDzppRecompute';
+import { AdminGuildTab } from './AdminGuildTab';
 import { ConfigTab } from './AdminConfigTab';
 import { BallotModeration, CorrectionPanel, EmptyBallotPanel, WinnerPanel } from './AdminRoundDecisionPanels';
 import { BallotCounts, countBallot } from './AdminRoundDecisionPanels';
@@ -36,7 +37,8 @@ type AdminTab =
   | 'challenge'
   | 'users'
   | 'shop'
-  | 'config';
+  | 'config'
+  | 'guild';
 
 /** Tabs backed by a real endpoint. The rest are still UI only. */
 // Every tab is backed by a real endpoint as of C7 phase two, so the WIRED_TABS list and the
@@ -53,6 +55,7 @@ const TABS: { key: AdminTab; label: string; icon: React.ReactNode }[] = [
   { key: 'users',       label: 'Users',         icon: <Users className="w-4 h-4" /> },
   { key: 'shop',        label: 'Shop',          icon: <ShoppingBag className="w-4 h-4" /> },
   { key: 'config',      label: 'Config',        icon: <Settings className="w-4 h-4" /> },
+  { key: 'guild',       label: 'Guild',          icon: <Shield className="w-4 h-4" /> },
 ];
 
 // ── SECTION WRAPPER ───────────────────────────────────────────────────────────
@@ -574,6 +577,7 @@ export function AdminDashboard({ round, user, onRoundChange, onLogin }: AdminDas
               <DzppRecomputePanel />
             </div>
           )}
+          {tab === 'guild'      && <AdminGuildTab />}
         </div>
       </div>
     </div>

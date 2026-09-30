@@ -133,8 +133,8 @@ export function DuelsPage({ user, onLogin, onNavigateToPlayer }: { user: AuthUse
       <section className="mb-8">
         <div className="mb-4 flex items-center justify-between border-b border-slate-800/80">
           <div className="flex gap-5">
-            <Tab active={tab === 'arena'} label={`Arena Â· ${open.length} open`} onClick={() => setTab('arena')} />
-            <Tab active={tab === 'current'} label={`Current duels Â· ${live.length}`} onClick={() => { setTab('current'); setCurrentDuelId(null); }} />
+            <Tab active={tab === 'arena'} label={`Arena · ${open.length} open`} onClick={() => setTab('arena')} />
+            <Tab active={tab === 'current'} label={`Current duels · ${live.length}`} onClick={() => { setTab('current'); setCurrentDuelId(null); }} />
             <Tab active={tab === 'mine'} label="My duels" onClick={() => setTab('mine')} />
           </div>
           <div className="hidden items-center gap-2 pb-3 text-[9px] font-mono uppercase tracking-widest text-slate-600 sm:flex"><Swords className="h-3.5 w-3.5" /> {tab === 'current' ? 'Live arena' : 'Duel arena'}</div>

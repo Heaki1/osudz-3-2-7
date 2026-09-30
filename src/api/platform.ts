@@ -9,7 +9,25 @@ export const platformApi = {
     mappingStats: () => get<{ submissions: number; approved: number; votes_received: number; rounds: number }>('/platform/mapping-stats'),
     recap: () => get<{ roundNumber: number; month: string; year: number; winner: { title: string; artist: string; difficultyName: string; coverUrl: string } | null; winnerVoteCount: number | null; totalVotes: number | null; archiveAt: string | null } | null>('/platform/recap'),
     compare: (a: string, b: string) => get<{
-      platform: Array<{ user_id: number; username: string; osu_id: string; avatar_url: string | null; global_rank: number | null; dzpp: number; rounds: number; wins: number; best: number | null; registered: boolean }>;
+      platform: Array<{
+        user_id: number; username: string; osu_id: string; avatar_url: string | null; global_rank: number | null;
+        dzpp: number; rounds: number; wins: number; best: number | null; dzpp_rank?: number | null; registered: boolean;
+        extras: {
+          firstPlaces: number; bestPlacement: number | null; qualifiedScores: number; challengePlays: number;
+          totalChallengeScore: number; approvedBeatmaps: number; votesReceived: number; challengeCollection: number;
+          shopItems: number; liveDzpp: number; level: number; baseLevel: number; challengeWins: number;
+          challengeWinLevels: number; levelProgress: number; nextLevelDzpp: number; level50Reward: string | null;
+          streakCurrent: number; streakBest: number;
+          duel: {
+            played: number; wins: number; losses: number; draws: number; totalStaked: number; totalPayout: number;
+            netDzpp: number; scoreWins: number; accuracyWins: number; fullComboWins: number; lowestMissWins: number;
+          };
+          guild: {
+            registered: boolean; rank: string | null; exp: number; attemptedHunts: number; successfulHunts: number;
+            failedHunts: number; examUsed: boolean; nextRank: string | null; nextRankExp: number | null;
+          };
+        } | null;
+      }>;
       osu: Array<{
         id: number; username: string; country: string; avatarUrl: string; globalRank: number | null; countryRank: number | null;
         pp: number | null; accuracy: number | null; playCount: number | null; playTime: number | null; totalScore: number | null;

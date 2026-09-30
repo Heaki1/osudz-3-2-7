@@ -15,7 +15,7 @@ import {
   travelToKingdom,
 } from '../services/beatmapHunts.js';
 import * as guild from '../repos/guild.js';
-import { GuildPartyRuleError, acceptPartyQuest, createAdventurerParty, joinAdventurerParty, resolvePartyQuest } from '../services/guildParties.js';
+import { GuildPartyRuleError, acceptPartyQuest, createAdventurerParty, getPartyDashboard, joinAdventurerParty, resolvePartyQuest } from '../services/guildParties.js';
 import { getActiveWar, getWarBoard, setKingdom, submitTrumpCard, syncWarScoresForUser, useWarSummons, hasWarSummons } from '../services/guildWar.js';
 
 const router = Router();
@@ -36,6 +36,11 @@ router.post('/parties', requireAuth, async (req, res) => {
   } catch (error) { fail(res, error); }
 });
 
+router.get('/party', requireAuth, async (req, res) => {
+  try { res.json(await getPartyDashboard(req.user!.id)); }
+  catch (error) { fail(res, error); }
+});
+
 router.post('/parties/:id/join', requireAuth, async (req, res) => {
   try {
     res.json(await joinAdventurerParty(req.user!.id, req.params.id));
@@ -44,7 +49,8 @@ router.post('/parties/:id/join', requireAuth, async (req, res) => {
 
 router.post('/parties/:id/quests', requireAuth, async (req, res) => {
   try {
-    res.status(201).json(await acceptPartyQuest(req.user!.id, req.params.id, Number(req.body?.expBounty)));
+    const templateId = typeof req.body?.templateId === 'string' ? req.body.templateId : '';
+    res.status(201).json(await acceptPartyQuest(req.user!.id, req.params.id, templateId));
   } catch (error) { fail(res, error); }
 });
 

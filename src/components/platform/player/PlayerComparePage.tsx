@@ -65,6 +65,8 @@ function EmptyState() {
 
 function Comparison({ result }: { result: Extract<CompareResult, { ok: true }>['data'] }) {
   const players = result.osu as [OsuPlayer, OsuPlayer];
+  const platform = result.platform as [typeof result.platform[number], typeof result.platform[number]];
+  const extras = [platform[0]?.extras, platform[1]?.extras];
   return <div className="space-y-10">
     {result.warnings?.map((warning) => (
       <div key={`${warning.code}-${warning.player}`} className="border-y border-amber-500/20 bg-amber-500/5 px-4 py-3 text-xs text-amber-200/80">
@@ -109,15 +111,115 @@ function Comparison({ result }: { result: Extract<CompareResult, { ok: true }>['
     <CompareSection icon={<BarChart3 />} title="osu!DZ career">
       <div className="border-y border-slate-800/80">
         <StatGrid players={players} rows={[
-          ['DZPP', result.platform[0]?.registered ? fmt(result.platform[0].dzpp) : '—', result.platform[1]?.registered ? fmt(result.platform[1].dzpp) : '—'],
-          ['Rounds', result.platform[0]?.registered ? fmt(result.platform[0].rounds) : '—', result.platform[1]?.registered ? fmt(result.platform[1].rounds) : '—'],
-          ['Wins', result.platform[0]?.registered ? fmt(result.platform[0].wins) : '—', result.platform[1]?.registered ? fmt(result.platform[1].wins) : '—'],
-        ]} better={[true, true, true]} numericRows={[
-          [result.platform[0]?.registered ? result.platform[0].dzpp ?? null : null, result.platform[1]?.registered ? result.platform[1].dzpp ?? null : null],
-          [result.platform[0]?.registered ? result.platform[0].rounds ?? null : null, result.platform[1]?.registered ? result.platform[1].rounds ?? null : null],
-          [result.platform[0]?.registered ? result.platform[0].wins ?? null : null, result.platform[1]?.registered ? result.platform[1].wins ?? null : null],
+          ['DZPP', platform[0]?.registered ? fmt(platform[0].dzpp) : '—', platform[1]?.registered ? fmt(platform[1].dzpp) : '—'],
+          ['DZPP rank', platform[0]?.registered && platform[0].dzpp_rank ? `#${fmt(platform[0].dzpp_rank)}` : '—', platform[1]?.registered && platform[1].dzpp_rank ? `#${fmt(platform[1].dzpp_rank)}` : '—'],
+          ['Live DZPP', platform[0]?.registered ? fmt(extras[0]?.liveDzpp) : '—', platform[1]?.registered ? fmt(extras[1]?.liveDzpp) : '—'],
+          ['Rounds', platform[0]?.registered ? fmt(platform[0].rounds) : '—', platform[1]?.registered ? fmt(platform[1].rounds) : '—'],
+          ['First places', platform[0]?.registered ? fmt(extras[0]?.firstPlaces) : '—', platform[1]?.registered ? fmt(extras[1]?.firstPlaces) : '—'],
+          ['Best placement', platform[0]?.registered ? fmt(extras[0]?.bestPlacement) : '—', platform[1]?.registered ? fmt(extras[1]?.bestPlacement) : '—'],
+          ['Qualified challenge score', platform[0]?.registered ? score(extras[0]?.qualifiedScores) : '—', platform[1]?.registered ? score(extras[1]?.qualifiedScores) : '—'],
+          ['Challenge plays', platform[0]?.registered ? fmt(extras[0]?.challengePlays) : '—', platform[1]?.registered ? fmt(extras[1]?.challengePlays) : '—'],
+          ['Total challenge score', platform[0]?.registered ? score(extras[0]?.totalChallengeScore) : '—', platform[1]?.registered ? score(extras[1]?.totalChallengeScore) : '—'],
+          ['Approved beatmaps', platform[0]?.registered ? fmt(extras[0]?.approvedBeatmaps) : '—', platform[1]?.registered ? fmt(extras[1]?.approvedBeatmaps) : '—'],
+          ['Votes received', platform[0]?.registered ? fmt(extras[0]?.votesReceived) : '—', platform[1]?.registered ? fmt(extras[1]?.votesReceived) : '—'],
+        ]} better={[true, false, true, true, false, true, true, true, true, true, true]} numericRows={[
+          [platform[0]?.registered ? platform[0].dzpp : null, platform[1]?.registered ? platform[1].dzpp : null],
+          [platform[0]?.registered ? (platform[0].dzpp_rank ?? null) : null, platform[1]?.registered ? (platform[1].dzpp_rank ?? null) : null],
+          [extras[0]?.liveDzpp ?? null, extras[1]?.liveDzpp ?? null],
+          [platform[0]?.registered ? platform[0].rounds : null, platform[1]?.registered ? platform[1].rounds : null],
+          [extras[0]?.firstPlaces ?? null, extras[1]?.firstPlaces ?? null],
+          [extras[0]?.bestPlacement ?? null, extras[1]?.bestPlacement ?? null],
+          [extras[0]?.qualifiedScores ?? null, extras[1]?.qualifiedScores ?? null],
+          [extras[0]?.challengePlays ?? null, extras[1]?.challengePlays ?? null],
+          [extras[0]?.totalChallengeScore ?? null, extras[1]?.totalChallengeScore ?? null],
+          [extras[0]?.approvedBeatmaps ?? null, extras[1]?.approvedBeatmaps ?? null],
+          [extras[0]?.votesReceived ?? null, extras[1]?.votesReceived ?? null],
         ]} />
       </div>
+    </CompareSection>
+    <CompareSection icon={<Zap />} title="Progression & streaks">
+      <StatGrid players={players} rows={[
+        ['Level', fmt(extras[0]?.level), fmt(extras[1]?.level)],
+        ['Base level', fmt(extras[0]?.baseLevel), fmt(extras[1]?.baseLevel)],
+        ['Challenge wins', fmt(extras[0]?.challengeWins), fmt(extras[1]?.challengeWins)],
+        ['Challenge-win levels', fmt(extras[0]?.challengeWinLevels), fmt(extras[1]?.challengeWinLevels)],
+        ['Level progress', extras[0] ? `${Math.round(extras[0].levelProgress * 100)}%` : '—', extras[1] ? `${Math.round(extras[1].levelProgress * 100)}%` : '—'],
+        ['Current win streak', fmt(extras[0]?.streakCurrent), fmt(extras[1]?.streakCurrent)],
+        ['Best win streak', fmt(extras[0]?.streakBest), fmt(extras[1]?.streakBest)],
+      ]} better={[true, true, true, true, true, true, true]} numericRows={[
+        [extras[0]?.level ?? null, extras[1]?.level ?? null],
+        [extras[0]?.baseLevel ?? null, extras[1]?.baseLevel ?? null],
+        [extras[0]?.challengeWins ?? null, extras[1]?.challengeWins ?? null],
+        [extras[0]?.challengeWinLevels ?? null, extras[1]?.challengeWinLevels ?? null],
+        [extras[0]?.levelProgress ?? null, extras[1]?.levelProgress ?? null],
+        [extras[0]?.streakCurrent ?? null, extras[1]?.streakCurrent ?? null],
+        [extras[0]?.streakBest ?? null, extras[1]?.streakBest ?? null],
+      ]} />
+    </CompareSection>
+    <CompareSection icon={<Swords />} title="Duel Arena">
+      <StatGrid players={players} rows={[
+        ['Duels played', fmt(extras[0]?.duel.played), fmt(extras[1]?.duel.played)],
+        ['Duel wins', fmt(extras[0]?.duel.wins), fmt(extras[1]?.duel.wins)],
+        ['Duel losses', fmt(extras[0]?.duel.losses), fmt(extras[1]?.duel.losses)],
+        ['Duel draws', fmt(extras[0]?.duel.draws), fmt(extras[1]?.duel.draws)],
+        ['Duel win rate', extras[0]?.duel.played ? `${((extras[0].duel.wins / extras[0].duel.played) * 100).toFixed(1)}%` : '—', extras[1]?.duel.played ? `${((extras[1].duel.wins / extras[1].duel.played) * 100).toFixed(1)}%` : '—'],
+        ['Duel PP earned', fmt(extras[0]?.duel.totalPayout ? extras[0].duel.totalPayout / 2 : 0), fmt(extras[1]?.duel.totalPayout ? extras[1].duel.totalPayout / 2 : 0)],
+        ['Total staked', fmt(extras[0]?.duel.totalStaked), fmt(extras[1]?.duel.totalStaked)],
+        ['Total payout', fmt(extras[0]?.duel.totalPayout), fmt(extras[1]?.duel.totalPayout)],
+        ['Duel net', fmt(extras[0]?.duel.netDzpp), fmt(extras[1]?.duel.netDzpp)],
+        ['Score wins', fmt(extras[0]?.duel.scoreWins), fmt(extras[1]?.duel.scoreWins)],
+        ['Accuracy wins', fmt(extras[0]?.duel.accuracyWins), fmt(extras[1]?.duel.accuracyWins)],
+        ['Full Combo wins', fmt(extras[0]?.duel.fullComboWins), fmt(extras[1]?.duel.fullComboWins)],
+        ['Lowest-miss wins', fmt(extras[0]?.duel.lowestMissWins), fmt(extras[1]?.duel.lowestMissWins)],
+      ]} better={[true, true, false, true, true, true, false, true, true, true, true, true, true]} numericRows={[
+        [extras[0]?.duel.played ?? null, extras[1]?.duel.played ?? null],
+        [extras[0]?.duel.wins ?? null, extras[1]?.duel.wins ?? null],
+        [extras[0]?.duel.losses ?? null, extras[1]?.duel.losses ?? null],
+        [extras[0]?.duel.draws ?? null, extras[1]?.duel.draws ?? null],
+        [extras[0]?.duel.played ? extras[0].duel.wins / extras[0].duel.played : null, extras[1]?.duel.played ? extras[1].duel.wins / extras[1].duel.played : null],
+        [extras[0]?.duel.wins ?? null, extras[1]?.duel.wins ?? null],
+        [extras[0]?.duel.totalStaked ?? null, extras[1]?.duel.totalStaked ?? null],
+        [extras[0]?.duel.totalPayout ?? null, extras[1]?.duel.totalPayout ?? null],
+        [extras[0]?.duel.netDzpp ?? null, extras[1]?.duel.netDzpp ?? null],
+        [extras[0]?.duel.scoreWins ?? null, extras[1]?.duel.scoreWins ?? null],
+        [extras[0]?.duel.accuracyWins ?? null, extras[1]?.duel.accuracyWins ?? null],
+        [extras[0]?.duel.fullComboWins ?? null, extras[1]?.duel.fullComboWins ?? null],
+        [extras[0]?.duel.lowestMissWins ?? null, extras[1]?.duel.lowestMissWins ?? null],
+      ]} />
+    </CompareSection>
+    <CompareSection icon={<Medal />} title="Adventurer Guild">
+      <StatGrid players={players} rows={[
+        ['Guild rank', extras[0]?.guild.registered ? (extras[0].guild.rank ?? '—') : 'Unregistered', extras[1]?.guild.registered ? (extras[1].guild.rank ?? '—') : 'Unregistered'],
+        ['Guild EXP', extras[0]?.guild.registered ? fmt(extras[0].guild.exp) : '—', extras[1]?.guild.registered ? fmt(extras[1].guild.exp) : '—'],
+        ['Hunt attempts', extras[0]?.guild.registered ? fmt(extras[0].guild.attemptedHunts) : '—', extras[1]?.guild.registered ? fmt(extras[1].guild.attemptedHunts) : '—'],
+        ['Successful Hunts', extras[0]?.guild.registered ? fmt(extras[0].guild.successfulHunts) : '—', extras[1]?.guild.registered ? fmt(extras[1].guild.successfulHunts) : '—'],
+        ['Failed Hunts', extras[0]?.guild.registered ? fmt(extras[0].guild.failedHunts) : '—', extras[1]?.guild.registered ? fmt(extras[1].guild.failedHunts) : '—'],
+        ['Hunt success rate', extras[0]?.guild.attemptedHunts ? `${((extras[0].guild.successfulHunts / extras[0].guild.attemptedHunts) * 100).toFixed(1)}%` : '—', extras[1]?.guild.attemptedHunts ? `${((extras[1].guild.successfulHunts / extras[1].guild.attemptedHunts) * 100).toFixed(1)}%` : '—'],
+        ['Placement exam', extras[0]?.guild.registered ? (extras[0].guild.examUsed ? 'Used' : 'Not used') : '—', extras[1]?.guild.registered ? (extras[1].guild.examUsed ? 'Used' : 'Not used') : '—'],
+        ['Next Guild rank', extras[0]?.guild.registered ? (extras[0].guild.nextRank ?? 'Highest') : '—', extras[1]?.guild.registered ? (extras[1].guild.nextRank ?? 'Highest') : '—'],
+      ]} better={[true, true, true, true, false, true, false, false]} numericRows={[
+        [null, null],
+        [extras[0]?.guild.registered ? extras[0].guild.exp : null, extras[1]?.guild.registered ? extras[1].guild.exp : null],
+        [extras[0]?.guild.registered ? extras[0].guild.attemptedHunts : null, extras[1]?.guild.registered ? extras[1].guild.attemptedHunts : null],
+        [extras[0]?.guild.registered ? extras[0].guild.successfulHunts : null, extras[1]?.guild.registered ? extras[1].guild.successfulHunts : null],
+        [extras[0]?.guild.registered ? extras[0].guild.failedHunts : null, extras[1]?.guild.registered ? extras[1].guild.failedHunts : null],
+        [extras[0]?.guild.attemptedHunts ? extras[0].guild.successfulHunts / extras[0].guild.attemptedHunts : null, extras[1]?.guild.attemptedHunts ? extras[1].guild.successfulHunts / extras[1].guild.attemptedHunts : null],
+        [null, null],
+        [null, null],
+      ]} />
+    </CompareSection>
+    <CompareSection icon={<Trophy />} title="Collections & mapping">
+      <StatGrid players={players} rows={[
+        ['Challenge maps owned', fmt(extras[0]?.challengeCollection), fmt(extras[1]?.challengeCollection)],
+        ['Shop items owned', fmt(extras[0]?.shopItems), fmt(extras[1]?.shopItems)],
+        ['Approved beatmaps', fmt(extras[0]?.approvedBeatmaps), fmt(extras[1]?.approvedBeatmaps)],
+        ['Votes received', fmt(extras[0]?.votesReceived), fmt(extras[1]?.votesReceived)],
+      ]} better={[true, true, true, true]} numericRows={[
+        [extras[0]?.challengeCollection ?? null, extras[1]?.challengeCollection ?? null],
+        [extras[0]?.shopItems ?? null, extras[1]?.shopItems ?? null],
+        [extras[0]?.approvedBeatmaps ?? null, extras[1]?.approvedBeatmaps ?? null],
+        [extras[0]?.votesReceived ?? null, extras[1]?.votesReceived ?? null],
+      ]} />
     </CompareSection>
   </div>;
 }

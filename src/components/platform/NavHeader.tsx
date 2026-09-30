@@ -15,6 +15,7 @@ import {
   ShoppingBag,
   UserRound,
   Swords,
+  ShieldCheck,
 } from 'lucide-react';
 
 export interface AuthUser {
@@ -77,6 +78,7 @@ const navItems: { key: PlatformPage; label: string; icon: React.ReactNode }[] = 
   { key: 'rankings',  label: 'Rankings',  icon: <BarChart2 className="w-4 h-4" /> },
   { key: 'compare',   label: 'Compare',   icon: <UserRound className="w-4 h-4" /> },
   { key: 'duels',     label: 'Duels',     icon: <Swords className="w-4 h-4" /> },
+  { key: 'guild',     label: 'Guild',     icon: <ShieldCheck className="w-4 h-4" /> },
   { key: 'shop',      label: 'Shop',      icon: <ShoppingBag className="w-4 h-4" /> },
   { key: 'archive',   label: 'Archive',   icon: <Archive className="w-4 h-4" /> },
 ];

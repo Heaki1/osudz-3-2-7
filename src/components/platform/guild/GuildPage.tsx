@@ -8,6 +8,8 @@ import { GuildPosterPile } from './GuildPosterPile';
 import { GuildHuntDetails } from './GuildHuntDetails';
 import { GuildCreateHunt } from './GuildCreateHunt';
 import { GuildPromotionModal, type GuildPromotionNotification } from './GuildPromotionModal';
+import { GuildWarPanel } from './GuildWarPanel';
+import { GuildPartyPanel } from './GuildPartyPanel';
 import { AdminGuildTab } from '../admin/AdminGuildTab';
 import './guildHall.css';
 
@@ -248,10 +250,13 @@ export function GuildPage({ userId, username, isAdmin = false }: GuildPageProps)
           </section>
         )}
 
+        <GuildWarPanel userId={userId} />
+        <GuildPartyPanel unlocked={profile?.profile.guild_rank === 'PLATINUM' || profile?.profile.guild_rank === 'MITHRIL' || profile?.profile.guild_rank === 'ORICHALCUM' || profile?.profile.guild_rank === 'ADAMANTITE'} />
+
         {inTransit ? <section className="guild-section"><div className="guild-paper guild-document border-2 border-amber-900/20 text-center"><div className="guild-document__eyebrow">The road is under way</div><div className="guild-document__title mt-1">Guild access sealed during transit</div><p className="mx-auto mt-2 max-w-xl text-xs opacity-70">Your journey completes at {new Date(profile?.profile.travel_arrives_at ?? '').toLocaleString()}. Return after arrival to enter the destination Guild Hall.</p></div></section> : <>
         {notifications.length > 0 && <section className="guild-section"><div className="guild-section__header"><div><div className="guild-section__title">Guild Notices</div><div className="guild-section__sub">Pinned messages from the reception desk</div></div></div><div className="guild-notices">{notifications.slice(0, 4).map((notification) => <button key={notification.id} onClick={() => void api.guild.readNotification(notification.id).then(() => refresh())} className={'guild-notice ' + (notification.read_at ? 'opacity-55' : '')}><div className="text-[10px] font-black uppercase tracking-wider">{notification.title}</div><div className="mt-1 text-[9px] leading-relaxed opacity-70">{notification.body}</div></button>)}</div></section>}
 
-        <section className="guild-section">
+        {!inTransit && <section className="guild-section">
           <div className="guild-section__header">
             <div><div className="guild-section__title flex items-center gap-2"><Swords className="h-5 w-5 text-[#d7ae5b]" />Active Quest Board</div><div className="guild-section__sub">Guild Adventures for Iron and Copper adventurers · choose your next Quest and earn your place in the Guild</div></div>
             <button onClick={() => setCreateOpen(true)} className="guild-seal-button"><FilePlus2 className="h-4 w-4" /> Post Hunt</button>
@@ -260,7 +265,7 @@ export function GuildPage({ userId, username, isAdmin = false }: GuildPageProps)
           <div className="space-y-16">
             {rows.map((row) => <section key={row.tier} className="guild-rack"><div className="guild-rack__heading"><div><h2>{row.label}<span>{row.subtitle}</span></h2></div></div>{row.active.length === 0 ? <div className="guild-empty">No active posters in this Guild row</div> : <div className="relative z-[1] grid grid-cols-1 justify-items-center gap-x-10 gap-y-16 sm:grid-cols-2 lg:grid-cols-4">{Array.from({ length: Math.ceil(row.active.length / 4) }, (_, index) => <GuildPosterPile key={index} hunts={row.active.slice(index * 4, index * 4 + 4)} claimed={false} onOpen={openHunt} />)}</div>}</section>)}
           </div>
-        </section>
+        </section>}
 
         <section className="guild-section guild-rack"><div className="guild-rack__heading"><div><h2 className="flex items-center gap-2"><Award className="h-5 w-5" />GUILD ARCHIVE<span>Claimed posters · completed contracts remain readable</span></h2></div></div><div className="space-y-16">{rows.map((row) => <section key={'claimed-' + row.tier}><div className="mb-6 text-center"><div className="font-serif text-lg font-black tracking-[.16em] text-[#e2c28a]">{row.label}</div><div className="mt-1 text-[8px] uppercase tracking-[.28em] text-[#dcc6a8]/35">{row.subtitle}</div></div>{row.claimed.length === 0 ? <div className="guild-empty">No claimed posters in this row</div> : <div className="grid grid-cols-1 justify-items-center gap-x-10 gap-y-16 sm:grid-cols-2 lg:grid-cols-4">{Array.from({ length: Math.ceil(row.claimed.length / 4) }, (_, index) => <GuildPosterPile key={index} hunts={row.claimed.slice(index * 4, index * 4 + 4)} claimed onOpen={openHunt} />)}</div>}</section>)}</div></section>
         <div className="guild-footer">Guild charter · verified osu! scores · seven-day Hunts · minimum bounty 100 DZP · every attempt recorded</div>

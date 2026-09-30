@@ -404,6 +404,7 @@ export async function createHunt(userId: number, input: {
     const profile = await guild.getGuildProfile(userId, client);
     if (profile.registration_status !== 'ACTIVE') throw new GuildRuleError('Register with the Adventurer Guild before posting Hunts.');
     if (!profile.kingdom || !profile.onboarding_completed) throw new GuildRuleError('Complete Guild onboarding before posting Hunts.');
+    if (profile.travel_destination) throw new GuildRuleError('The Guild board is sealed during your 8-hour transit.');
     await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [userId]);
     const season = await hunts.getCurrentSeason(client);
     const balance = await hunts.getSpendableBalance(userId, season, client);
@@ -473,6 +474,7 @@ export async function listMyTargetScores(userId: number, difficultyId: number) {
 export async function importHuntScore(userId: number, huntId: string, scoreIdInput: string) {
   const profile = await guild.getGuildProfile(userId);
   if (profile.registration_status !== 'ACTIVE') throw new GuildRuleError('Register with the Adventurer Guild before hunting.');
+  if (profile.travel_destination) throw new GuildRuleError('The Guild board is sealed during your 8-hour transit.');
   const hunt = await hunts.findHunt(huntId);
   if (!hunt || hunt.status !== 'ACTIVE') throw new GuildRuleError('This Hunt is not active.');
   if (new Date(hunt.expires_at).getTime() <= Date.now()) throw new GuildRuleError('This Hunt has expired.');
@@ -732,6 +734,7 @@ export async function reconcileDueLoans(limit = 100) {
     } finally {
       client.release();
     }
+    await new Promise<void>((resolve) => setTimeout(resolve, 50));
   }
   return { loansChecked: due.length, loansCollected: collected };
 }

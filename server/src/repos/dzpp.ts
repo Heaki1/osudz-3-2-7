@@ -53,6 +53,12 @@ import {
   mergeBestBeatmapResults,
 } from '../domain/dzpp/recompute.js';
 
+const RANKED_JOINS =
+  'FROM round_dzpp d JOIN rounds r ON r.id = d.round_id JOIN users u ON u.id = d.user_id ' +
+  'WHERE upper(trim(u.country_code)) = $1';
+const YEAR_FILTER = 'AND ($2::int IS NULL OR r.year = $2)';
+const SEASON_FILTER = 'AND r.round_number BETWEEN $2 AND $3';
+
 export {
   DZPP_FORMULA_VERSION,
   CHALLENGE_SCORE_POINTS,

@@ -12,4 +12,5 @@ export type PlatformPage =
   | 'admin'
   | 'archive'
   | 'compare'
-  | 'duels';
+  | 'duels'
+  | 'guild';

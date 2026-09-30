@@ -28,6 +28,7 @@ router.get('/', requireAuth, async (req, res) => {
   try {
     const profile = await guild.getGuildProfile(req.user!.id);
     if (profile.registration_status !== 'ACTIVE' || !profile.kingdom || !profile.onboarding_completed) { res.status(403).json({ error: 'Complete Guild onboarding before entering a Guild board.' }); return; }
+    if (profile.travel_destination) { res.status(409).json({ error: 'The Guild board is sealed during your 8-hour transit.' }); return; }
     const status = req.query.status === 'claimed' ? 'CLAIMED' : 'ACTIVE';
     const tier = typeof req.query.tier === 'string' ? req.query.tier as any : null;
     const rows = await hunts.listHunts(status, tier, profile.kingdom);
@@ -54,6 +55,7 @@ router.get('/claimed', requireAuth, async (req, res) => {
   try {
     const profile = await guild.getGuildProfile(req.user!.id);
     if (profile.registration_status !== 'ACTIVE' || !profile.kingdom || !profile.onboarding_completed) { res.status(403).json({ error: 'Complete Guild onboarding before entering a Guild board.' }); return; }
+    if (profile.travel_destination) { res.status(409).json({ error: 'The Guild board is sealed during your 8-hour transit.' }); return; }
     const tier = typeof req.query.tier === 'string' ? req.query.tier as any : null;
     const rows = await hunts.listHunts('CLAIMED', tier, profile.kingdom);
     res.json(rows.map(huntJson));

@@ -1,4 +1,7 @@
 import { authApi } from './auth';
+import { guildApi } from './guild';
+import { beatmapHuntsApi } from './beatmapHunts';
+import { guildAdminApi } from './guildAdmin';
 import { duelsApi } from './duels';
 import { roundsApi } from './rounds';
 import { submissionsApi } from './submissions';
@@ -12,6 +15,9 @@ export * from './types';
 
 export const api = {
   auth: authApi,
+  guild: guildApi,
+  beatmapHunts: beatmapHuntsApi,
+  guildAdmin: guildAdminApi,
   duels: duelsApi,
   rounds: roundsApi,
   stats: statsApi,

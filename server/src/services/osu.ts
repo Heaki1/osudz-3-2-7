@@ -194,6 +194,49 @@ export interface OsuBeatmap {
 
 let appToken: { value: string; expiresAt: number } | null = null;
 
+const OSU_REQUEST_INTERVAL_MS = 200;
+const OSU_RATE_LIMIT_MAX_RETRIES = 5;
+let nextOsuRequestAt = 0;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForOsuRequestSlot() {
+  const now = Date.now();
+  const waitMs = Math.max(0, nextOsuRequestAt - now);
+  nextOsuRequestAt = Math.max(now, nextOsuRequestAt) + OSU_REQUEST_INTERVAL_MS;
+  if (waitMs > 0) await sleep(waitMs);
+}
+
+function retryAfterMs(res: Response): number {
+  const value = res.headers.get('retry-after');
+  if (!value) return 10_000;
+
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.max(0, seconds * 1000);
+
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? Math.max(0, timestamp - Date.now()) : 10_000;
+}
+
+/**
+ * Score synchronization uses this gate for every osu! API request. Requests are
+ * serialized with a 200ms minimum interval and 429 responses honor Retry-After
+ * before retrying, with a finite retry budget so a bad upstream cannot hang maintenance forever.
+ */
+export async function fetchOsuApi(input: string | URL, init?: RequestInit): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    await waitForOsuRequestSlot();
+    const res = await fetch(input, init);
+    if (res.status !== 429 || attempt >= OSU_RATE_LIMIT_MAX_RETRIES) return res;
+
+    const delayMs = retryAfterMs(res);
+    console.warn(`[osu] rate limited (429); retrying after ${Math.ceil(delayMs / 1000)}s`);
+    await sleep(delayMs);
+  }
+}
+
 /**
  * A token for the application itself. Cached with a minute of slack so a lookup
  * never races the expiry it just checked.
@@ -409,7 +452,7 @@ export async function fetchUserRecentScoresForDifficulty(
     offset: String(offset),
   });
 
-  const res = await fetch(
+  const res = await fetchOsuApi(
     `${API_BASE}/users/${osuUserId}/scores/recent?${params.toString()}`,
     {
       headers: {
@@ -504,7 +547,7 @@ export async function fetchUserScoresForDifficulty(
   osuUserId: number,
   mode: 'osu' | 'mania' = 'osu'
 ): Promise<OsuScore[]> {
-  const res = await fetch(
+  const res = await fetchOsuApi(
     `${API_BASE}/beatmaps/${difficultyId}/scores/users/${osuUserId}?mode=${encodeURIComponent(mode)}`,
     { headers: { Authorization: `Bearer ${await getAppToken()}`, Accept: 'application/json' } }
   );
@@ -579,6 +622,64 @@ export interface OsuScore {
 
 /** Raised when the player has no score on that difficulty, so routes can answer 404. */
 export class ScoreNotFound extends Error {}
+
+/** Reads one public score by its immutable osu! score id. */
+export async function fetchScoreById(scoreId: number): Promise<OsuScore & {
+  userId: number;
+  username: string;
+  beatmapsetId: number | null;
+  title: string;
+  artist: string;
+  difficultyName: string;
+}> {
+  const res = await fetchOsuApi(API_BASE + '/scores/' + scoreId, {
+    headers: {
+      Authorization: 'Bearer ' + await getAppToken(),
+      Accept: 'application/json',
+      'x-api-version': '20240529',
+    },
+  });
+
+  if (res.status === 404) throw new ScoreNotFound('No such osu! score');
+  if (!res.ok) throw new Error('osu! GET /scores/' + scoreId + ' failed: ' + res.status);
+
+  const raw = await res.json() as Record<string, unknown>;
+  const user = asRecord(raw.user);
+  const beatmap = asRecord(raw.beatmap);
+  const beatmapset = asRecord(raw.beatmapset);
+  const statistics = asRecord(raw.statistics);
+  const score = asNumber(raw.total_score) ?? asNumber(raw.score);
+  const accuracy = asNumber(raw.accuracy);
+  const userId = asNumber(user.id) ?? asNumber(raw.user_id);
+  const beatmapId = asNumber(raw.beatmap_id) ?? asNumber(beatmap.id);
+  const id = asNumber(raw.id);
+
+  if (score === null || accuracy === null || userId === null || beatmapId === null || id === null) {
+    throw new Error('osu! score returned an unexpected shape');
+  }
+
+  return {
+    osuScoreId: id,
+    score: Math.round(score),
+    accuracy: Math.round(accuracy * 10_000) / 100,
+    misses: Math.round(asNumber(statistics.count_miss) ?? asNumber(statistics.miss) ?? 0),
+    maxCombo: Math.round(asNumber(raw.max_combo) ?? 0),
+    mods: readMods(raw.mods),
+    pp: asNumber(raw.pp),
+    rank: typeof raw.rank === 'string' ? raw.rank : '',
+    passed: raw.passed !== false,
+    endedAt: typeof raw.ended_at === 'string' ? raw.ended_at : typeof raw.created_at === 'string' ? raw.created_at : null,
+    osuUserId: userId,
+    beatmapId,
+    ruleset: typeof raw.ruleset_id === 'string' ? raw.ruleset_id : typeof raw.mode === 'string' ? raw.mode : 'osu',
+    userId,
+    username: typeof user.username === 'string' ? user.username : '',
+    beatmapsetId: asNumber(raw.beatmapset_id) ?? asNumber(beatmapset.id),
+    title: typeof beatmapset.title === 'string' ? beatmapset.title : '',
+    artist: typeof beatmapset.artist === 'string' ? beatmapset.artist : '',
+    difficultyName: typeof beatmap.version === 'string' ? beatmap.version : '',
+  };
+}
 
 /**
  * Normalises the mods array. osu! returns plain acronyms on older scores and

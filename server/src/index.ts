@@ -23,6 +23,10 @@ import commentsRouter from './routes/comments.js';
 import challengeChatRouter from './routes/challengeChat.js';
 import platformRouter from './routes/platform.js';
 import duelsRouter from './routes/duels.js';
+import guildRouter from './routes/guild.js';
+import beatmapHuntsRouter from './routes/beatmapHunts.js';
+import guildAdminRouter from './routes/guildAdmin.js';
+import { runGuildMaintenance } from './services/guildMaintenance.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -74,6 +78,9 @@ app.use('/api/dzp', dzpRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/platform', platformRouter);
 app.use('/api/duels', duelsRouter);
+app.use('/api/guild', guildRouter);
+app.use('/api/beatmap-hunts', beatmapHuntsRouter);
+app.use('/api/admin/guild', guildAdminRouter);
 // Stable read-only public API namespace. The same handlers are deliberately reused so
 // the public API cannot drift from the normal application contract.
 app.use('/api/v1', platformRouter);
@@ -138,6 +145,13 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   console.error('[api] unhandled error:', err instanceof Error ? err.stack ?? err.message : err);
   res.status(500).json({ error: 'Something went wrong. Try again.' });
 });
+
+// Hunts and Guild Loans have time-based settlement rules. Keep the maintenance loop
+// lightweight and idempotent so a restart cannot duplicate payouts.
+void runGuildMaintenance();
+setInterval(() => {
+  void runGuildMaintenance();
+}, 60_000);
 
 app.listen(PORT, () => {
   console.log(`osudz API listening on http://localhost:${PORT}`);

@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  fetchOsuApi,
   isSearchStatus,
   orderHits,
   parseDifficultyId,
@@ -8,6 +9,43 @@ import {
   buildSearchQuery,
   withinRange,
 } from './osu.js';
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
+
+describe('fetchOsuApi', () => {
+  it('retries 429 responses using Retry-After before returning success', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response('rate limited', { status: 429, headers: { 'Retry-After': '2' } }))
+      .mockResolvedValueOnce(new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const promise = fetchOsuApi('https://osu.ppy.sh/test');
+    await vi.runAllTimersAsync();
+    const response = await promise;
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('stops retrying after the bounded 429 retry budget', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response('rate limited', { status: 429, headers: { 'Retry-After': '0' } }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const promise = fetchOsuApi('https://osu.ppy.sh/test');
+    await vi.runAllTimersAsync();
+    const response = await promise;
+
+    expect(response.status).toBe(429);
+    expect(fetchMock).toHaveBeenCalledTimes(6);
+  });
+});
 
 describe('parseDifficultyId', () => {
   it('accepts every osu! link shape a player might paste', () => {

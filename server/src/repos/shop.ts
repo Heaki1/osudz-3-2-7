@@ -195,6 +195,9 @@ export async function stealShopItem(
     const season = seasonForRoundNumber(roundNumber);
 
     const price = item.current_price_dzp;
+    if (price === null) {
+      throw new Error('This item has no valid steal price');
+    }
     const { compensationDzp: compensation, newPriceDzp: newPrice } = calculateStealPricing(
       price,
       previousOwner?.acquisition_price_dzp ?? null,

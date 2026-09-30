@@ -5,7 +5,20 @@ html,
 body,
 #root {
   height: 100%;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   font-family: 'Inter', sans-serif;
+}
+
+html,
+body {
+  overflow-x: hidden;
+  margin: 0;
+}
+
+#root {
+  overflow-x: clip;
 }
 
 * {
