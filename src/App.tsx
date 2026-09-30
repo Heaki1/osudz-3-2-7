@@ -43,6 +43,8 @@ const RankingsPage = lazy(() => import('./components/platform/RankingsPage').the
 const PlayerProfilePage = lazy(() => import('./components/platform/player/PlayerProfilePage'));
 const PlayerComparePage = lazy(() => import('./components/platform/player/PlayerComparePage').then((m) => ({ default: m.PlayerComparePage })));
 const DuelsPage = lazy(() => import('./components/platform/duels/DuelsPage').then((m) => ({ default: m.DuelsPage })));
+const GuildPage = lazy(() => import('./components/platform/guild/GuildPage').then((m) => ({ default: m.GuildPage })));
+import { GuildWelcomeModal } from './components/platform/guild/GuildWelcomeModal';
 import {
   api,
   ApiChallengeBeatmap,
@@ -69,6 +71,7 @@ const getPageFromPath = (): PlatformPage => {
   if (window.location.pathname.startsWith('/player/')) return 'player';
   if (window.location.pathname === '/compare') return 'compare';
   if (window.location.pathname === '/duels') return 'duels';
+  if (window.location.pathname === '/guild') return 'guild';
   // ─────────────────────────────────────────────────────────────────────────
 
   switch (window.location.pathname) {
@@ -140,6 +143,7 @@ export default function App() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [settings, setSettings] = useState<ApiSiteSettings | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [guildWelcomeOpen, setGuildWelcomeOpen] = useState(false);
 
   const audioState = useSyncExternalStore(
     audioPreview.subscribe,
@@ -232,9 +236,17 @@ export default function App() {
 
   // Session restore on load — identical to original.
   useEffect(() => {
-    api.auth.me().then((result) => {
+    api.auth.me().then(async (result) => {
       if (result.ok && result.data) {
         setPlatformUser(toAuthUser(result.data));
+
+        const guildProfile = await api.guild.profile();
+        if (
+          guildProfile.ok &&
+          !guildProfile.data.profile.onboarding_completed
+        ) {
+          setGuildWelcomeOpen(true);
+        }
 
         const returnPath = sessionStorage.getItem('osudz:return-after-login');
         if (returnPath && returnPath.startsWith('/') && !returnPath.startsWith('//')) {
@@ -579,7 +591,21 @@ export default function App() {
         )}
         {platformPage === 'archive' && <ArchivePage />}
         {platformPage === 'compare' && <PlayerComparePage />}
-          {platformPage === 'duels' && <DuelsPage user={platformUser} onLogin={handleLogin} onNavigateToPlayer={navigateToPlayer} />}
+        {platformPage === 'duels' && <DuelsPage user={platformUser} onLogin={handleLogin} onNavigateToPlayer={navigateToPlayer} />}
+        {platformPage === 'guild' && platformUser && (
+          <GuildPage userId={platformUser.id} username={platformUser.username} isAdmin={platformUser.isAdmin} />
+        )}
+        {platformPage === 'guild' && !platformUser && (
+          <div className="min-h-[70vh] grid place-items-center bg-[#120a06] px-4">
+            <div className="max-w-lg border border-[#9b6635] bg-[#ead7b8] p-8 text-center text-[#332316] shadow-2xl">
+              <img src="/guild/guild-icon.png" alt="The DZ Guild" className="mx-auto mb-5 h-24 w-24 object-contain" />
+              <div className="text-[10px] font-black uppercase tracking-[.28em] opacity-60">The DZ Guild</div>
+              <h1 className="mt-2 font-serif text-3xl font-black">Enter the Adventurer Guild</h1>
+              <p className="mt-3 text-sm leading-relaxed opacity-70">Sign in with your osu! account to access your Guild rank, Quest Hunts, Placement Exam, and Guild archive.</p>
+              <button onClick={handleLogin} className="mt-6 border border-[#6b431f] bg-gradient-to-b from-[#e5c77f] to-[#a97835] px-5 py-3 text-[10px] font-black uppercase tracking-wider shadow-lg">Sign in with osu!</button>
+            </div>
+          </div>
+        )}
 
         {/* ── NEW: player profile page ─────────────────────────────────────── */}
         {platformPage === 'player' && profileUsername !== null && (
@@ -599,12 +625,13 @@ export default function App() {
         {/* ──────────────────────────────────────────────────────────────────── */}
         </Suspense>
       </main>
+      {guildWelcomeOpen && platformUser && (
+        <GuildWelcomeModal
+          onClose={() => setGuildWelcomeOpen(false)}
+          onOpenGuild={() => navigate('guild')}
+        />
+      )}
       </div>
     </div>
   );
 }
-
-
-
-
-
